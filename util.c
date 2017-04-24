@@ -15,7 +15,7 @@ string_concat(const char *str1, const char *str2)
     size_t size1 = strlen(str1);
     size_t size2 = strlen(str2);
 
-    const char *str = calloc(sizeof(char), size1 + size2);
+    const char *str = se_calloc(sizeof(char), size1 + size2);
     memcpy((void *) str, str1, size1);
     memcpy((void *) str + size1, str2, size2);
     return str;
@@ -54,4 +54,16 @@ unicode_strlen(const char *str)
     }
 
     return count;
+}
+
+void *
+se_calloc(size_t count, size_t size)
+{
+    return calloc(count, size);
+}
+
+void
+se_free(void *mem)
+{
+    free(mem);
 }

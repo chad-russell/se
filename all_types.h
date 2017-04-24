@@ -7,39 +7,41 @@
 
 #include "vector.h"
 
-enum ROPE_NODE_FLAGS {
-    ROPE_NODE_LEAF = 1,
-    ROPE_NODE_HIGHLIGHT = 1 << 1,
-    ROPE_NODE_BUF_NEEDS_FREE = 1 << 2
+enum ROPE_FLAGS {
+    ROPE_LEAF = 1
 };
 
-struct rope_node_t {
+struct rope_t {
     int64_t byte_weight;
     int64_t char_weight;
 
     int16_t flags;
+
     int32_t rc;
 
     union {
         struct {
-            struct rope_node_t *left;
-            struct rope_node_t *right;
+            struct rope_t *left;
+            struct rope_t *right;
         };
         const char *buf;
     };
 };
 
-struct editor_screen_t {
+struct cursor_info_t {
     int64_t cursor_pos;
     int64_t cursor_byte_pos;
     int64_t cursor_row;
     int64_t cursor_col;
-
-    struct rope_node_t *root;
 };
 
-struct editor_context_t {
-    struct vector_t *undo_stack; // stack of (struct editor_screen_t) roots
+struct editor_screen_t {
+    struct cursor_info_t cursor_info;
+    struct rope_t *rn;
+};
+
+struct editor_buffer_t {
+    struct circular_buffer_t *undo_buffer; // circular buffer of (struct editor_screen_t) roots
 };
 
 #endif //SE_ALL_TYPES_H

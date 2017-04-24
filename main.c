@@ -4,29 +4,13 @@
 #include <czmq.h>
 
 #include "all_types.h"
-#include "rope_node.h"
+#include "rope.h"
+#include "util.h"
+#include "buf.h"
 
-void
-test_rope_operations()
-{
-    struct editor_context_t ctx;
-    ctx.undo_stack = vector_init(1, sizeof(struct editor_screen_t));
+#define UNDO_BUFFER_SIZE 10
 
-    struct rope_node_t *hello = rope_node_leaf_new("hello,_my_name_is_", ctx);
-//    hello->rc += 1;
-
-    struct rope_node_t *deleted = rope_node_delete(hello, 5, 9, ctx);
-    deleted->rc += 1;
-
-    struct rope_node_t *inserted = rope_node_insert(hello, 18, "Chad!!", ctx);
-//    inserted->rc += 1;
-
-    rope_node_free(inserted);
-    rope_node_free(hello);
-    rope_node_print(deleted);
-}
-
-struct editor_context_t
+struct editor_buffer_t
 read_file(const char *file_name)
 {
     FILE *file = fopen(file_name, "r");
@@ -49,7 +33,7 @@ read_file(const char *file_name)
 
     rewind(file);
 
-    char *src = (char *) calloc(file_size + 1, sizeof(char));
+    char *src = (char *) se_calloc(file_size + 1, sizeof(char));
     if (src == NULL) {
         fprintf(stderr, "could not allocate for reading file into memory\n");
     }
@@ -67,63 +51,54 @@ read_file(const char *file_name)
         fprintf(stderr, "warning: failure closing file\n");
     }
 
-    struct editor_context_t ctx;
-    ctx.undo_stack = vector_init(1, sizeof(struct editor_screen_t));
+    struct editor_buffer_t ctx;
+    ctx.undo_buffer = circular_buffer_init(sizeof(struct editor_screen_t), UNDO_BUFFER_SIZE);
 
-    struct editor_screen_t editor_screen;
-    editor_screen.cursor_pos = 0;
-    editor_screen.cursor_byte_pos = 0;
-    editor_screen.cursor_row = 0;
-    editor_screen.cursor_col = 0;
-    editor_screen.root = rope_node_leaf_new(src, ctx);
-    editor_screen.root->rc += 1; // retain this for the time being
-
-    vector_append(ctx.undo_stack, &editor_screen);
+    undo_stack_append(ctx, rope_leaf_new(src, ctx));
 
     return ctx;
 }
 
-//  --------------------------------------------------------------------------
-//  Actor
-//  must call zsock_signal(pipe, 0) when initialized
-//  must listen to pipe and exit on $TERM command
-
 static void
-echo_actor (zsock_t *pipe, void *args)
+echo_actor(zsock_t *pipe, void *args)
 {
-    //  Do some initialization
-    assert(streq((char *) args, "Hello, World"));
-    zsock_signal (pipe, 0);
+    // Actor must call zsock_signal(pipe, 0) when initialized
+    zsock_signal(pipe, 0);
 
     bool terminated = false;
     while (!terminated) {
         zmsg_t *msg = zmsg_recv(pipe);
-        if (!msg)
-            break;              //  Interrupted
-        char *command = zmsg_popstr (msg);
-        //  All actors must handle $TERM in this way
+        if (!msg) {
+            // Interrupted
+            break;
+        }
+
+        char *command = zmsg_popstr(msg);
+
+        // All actors must handle $TERM in this way
         if (streq(command, "$TERM")) {
             terminated = true;
         }
-        //  This is an example command for our test actor
+        // This is an example command for our test actor
         else if (streq(command, "ECHO")) {
             zmsg_send(&msg, pipe);
         }
         else {
             puts("E: invalid message to actor");
-            assert (false);
+            assert(false);
         }
+
         free(command);
-        zmsg_destroy (&msg);
+        zmsg_destroy(&msg);
     }
 }
 
 void
 zactor_example()
 {
-    zactor_t *actor = zactor_new(echo_actor, "Hello, World");
+    zactor_t *actor = zactor_new(echo_actor, NULL);
 
-    while (!zctx_interrupted) {
+    while (!zsys_interrupted) {
         zstr_sendx(actor, "ECHO", "This is a string", NULL);
         char *string = zstr_recv(actor);
         printf("string: %s\n", string);
@@ -134,16 +109,79 @@ zactor_example()
     zactor_destroy(&actor);
 }
 
+void
+run_main_zmq_loop(struct editor_screen_t screen, struct editor_buffer_t ctx)
+{
+    // todo(chad):
+    // get undo_stack working in a way that we can easily get the last element
+    // as well as pop the last element
+    struct rope_t *last_rn = screen.rn;
+
+    zsock_t *rep = zsock_new_rep("tcp://*:5555");
+    while (!zsys_interrupted) {
+        char *msg = zstr_recv(rep);
+//        printf("received \"%s\"\n", msg);
+
+//        struct rope_t *saved = last_rn;
+
+        if (!strcmp(msg, "BACKSPACE")) {
+            int64_t end = rope_total_char_length(last_rn);
+            if (end > 0) {
+                last_rn = rope_delete(last_rn, end - 1, end, ctx);
+                undo_stack_append(ctx, last_rn);
+//                rope_free(saved);
+            }
+        } else {
+            last_rn = rope_append(last_rn, msg, ctx);
+            undo_stack_append(ctx, last_rn);
+//            rope_free(saved);
+        }
+
+        struct buf_t *to_send = buf_init_fmt("%rope", last_rn);
+
+        zstr_send(rep, to_send->bytes);
+        buf_free(to_send);
+        zstr_free(&msg);
+    }
+}
+
+void
+test_append_delete(struct rope_t *rn, struct editor_buffer_t ctx)
+{
+    struct rope_t *saved;
+
+    for (int i = 0; i < 30; i++) {
+        // append
+        saved = rn;
+        rn = rope_append(rn, "a", ctx);
+        rope_free(saved);
+
+//        // delete
+//        saved = rn;
+//        int64_t end = rope_total_char_length(rn);
+//        if (end > 0) {
+//            rn = rope_delete(rn, end - 1, end, ctx);
+//            rope_free(saved);
+//        }
+    }
+}
+
 int
 main()
 {
-//    test_rope_operations();
-    struct editor_context_t ctx = read_file("/Users/chadrussell/Projects/text/hello.txt");
-    struct editor_screen_t *screen = (struct editor_screen_t *) ctx.undo_stack->buf;
-    struct rope_node_t *inserted = rope_node_insert(screen->root, 48, "***", ctx);
-    rope_node_print(inserted);
+    struct editor_buffer_t ctx;
+    ctx.undo_buffer = circular_buffer_init(sizeof(struct editor_screen_t), UNDO_BUFFER_SIZE);
 
-//    zactor_example();
+    struct editor_screen_t screen;
+    screen.rn = rope_leaf_new("", ctx);
+    screen.cursor_info.cursor_pos = 0;
+    screen.cursor_info.cursor_byte_pos = 0;
+    screen.cursor_info.cursor_row = 0;
+    screen.cursor_info.cursor_col = 0;
+    circular_buffer_append(ctx.undo_buffer, &screen);
+
+//    test_append_delete(screen.rn, ctx);
+    run_main_zmq_loop(screen, ctx);
 
     return 0;
 }

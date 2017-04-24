@@ -3,7 +3,7 @@ project(se)
 
 set(CMAKE_C_STANDARD 99)
 
-set(SOURCE_FILES main.c all_types.h rope_node.h rope_node.c util.h util.c vector.h vector.c)
+set(SOURCE_FILES main.c all_types.h rope.h rope.c util.h util.c vector.h vector.c buf.h buf.c)
 add_executable(se ${SOURCE_FILES})
 
 # path to libczmq.a

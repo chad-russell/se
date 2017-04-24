@@ -22,4 +22,10 @@ bytes_in_codepoint(char first_byte);
 int64_t
 unicode_strlen(const char *str);
 
+void *
+se_calloc(size_t count, size_t size);
+
+void
+se_free(void *mem);
+
 #endif //SE_UTIL_H
