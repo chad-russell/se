@@ -63,12 +63,17 @@ struct buf_t *buf_init(size_t initial_capacity) {
     buf->bytes = (char *) se_calloc(initial_capacity + 1, sizeof(char));
     buf->length = 0;
     buf->capacity = initial_capacity + 1;
+    buf->rc = 0;
     return buf;
 }
 
 void buf_free(struct buf_t *buf) {
-    free(buf->bytes);
-    free(buf);
+    if (buf->rc > 0) {
+        buf->rc -= 1;
+    } else {
+        free(buf->bytes);
+        free(buf);
+    }
 }
 
 void buf_ensure_free_bytes(struct buf_t *buf, int64_t capacity) {
@@ -175,7 +180,7 @@ void buf_write_rope(struct buf_t *buf, struct rope_t *rn) {
     }
 
     if (rn->flags & ROPE_LEAF) {
-        buf_write_bytes(buf, rn->buf, rn->byte_weight);
+        buf_write_bytes(buf, rn->str_buf->bytes, rn->byte_weight);
         return;
     }
 

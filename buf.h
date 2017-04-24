@@ -18,6 +18,8 @@ struct buf_t {
     size_t capacity;
     char *bytes;
 
+    int32_t rc;
+
     // formatting stuff
     int32_t indent;
 };

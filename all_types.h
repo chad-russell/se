@@ -24,7 +24,8 @@ struct rope_t {
             struct rope_t *left;
             struct rope_t *right;
         };
-        const char *buf;
+//        const char *buf;
+        struct buf_t *str_buf;
     };
 };
 

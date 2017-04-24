@@ -9,6 +9,7 @@
 
 #include "rope.h"
 #include "util.h"
+#include "buf.h"
 
 #define SPLIT_THRESHOLD 0
 
@@ -143,7 +144,7 @@ struct rope_t *
 rope_leaf_new(const char *buf, struct editor_buffer_t ctx)
 {
     struct rope_t *rn = rope_new(ROPE_LEAF, (int64_t) strlen(buf), unicode_strlen(buf), ctx);
-    rn->buf = strdup(buf);
+    rn->str_buf = buf_init_fmt("%str", buf);
     return rn;
 }
 
@@ -183,7 +184,7 @@ rope_leaf_new_concat(const char *left, const char *right, struct editor_buffer_t
                                            (int64_t) (strlen(left) + strlen(right)),
                                            unicode_strlen(left) + unicode_strlen(right),
                                            ctx);
-    rn->buf = string_concat(left, right);
+    rn->str_buf = buf_init_fmt("%s", string_concat(left, right));
     return rn;
 }
 
@@ -201,7 +202,8 @@ rope_shallow_copy(struct rope_t *rn, struct editor_buffer_t ctx)
         rope_inc_rc(rn->left);
         rope_inc_rc(rn->right);
     } else {
-        copy->buf = strdup(rn->buf);
+        copy->str_buf = rn->str_buf;
+        copy->str_buf->rc += 1;
     }
 
     return copy;
@@ -222,7 +224,7 @@ rope_free(struct rope_t *rn)
         rope_dec_rc(rn->right);
     }
     else {
-        se_free((void *) rn->buf);
+        buf_free(rn->str_buf);
     }
 
     se_free(rn);
@@ -235,7 +237,7 @@ rope_byte_at(struct rope_t *rn, int64_t i)
         if (rn->byte_weight - 1 < i) {
             return NULL;
         }
-        return rn->buf + i;
+        return rn->str_buf->bytes + i;
     }
 
     if (rn->byte_weight - 1 < i) {
@@ -258,9 +260,9 @@ rope_char_at(struct rope_t *rn, int64_t i)
 
         int32_t byte_offset = 0;
         for (int32_t j = 0; j < i; j++) {
-            byte_offset += bytes_in_codepoint(*(rn->buf + byte_offset));
+            byte_offset += bytes_in_codepoint(*(rn->str_buf->bytes + byte_offset));
         }
-        return rn->buf + byte_offset;
+        return rn->str_buf->bytes + byte_offset;
     }
 
     if (rn->char_weight - 1 < i) {
@@ -285,7 +287,7 @@ rope_concat(struct rope_t *left, struct rope_t *right, struct editor_buffer_t ct
     if (right->flags & ROPE_LEAF) {
         if (left->flags & ROPE_LEAF) {
             if (left->byte_weight + right->byte_weight < SPLIT_THRESHOLD) {
-                return rope_leaf_new_concat(left->buf, right->buf, ctx);
+                return rope_leaf_new_concat(left->str_buf->bytes, right->str_buf->bytes, ctx);
             }
         }
         else if (left->right == NULL) {
@@ -296,7 +298,7 @@ rope_concat(struct rope_t *left, struct rope_t *right, struct editor_buffer_t ct
         else if (left->right->flags & ROPE_LEAF
                  && left->right->byte_weight + right->byte_weight < SPLIT_THRESHOLD) {
             struct rope_t *cat = rope_shallow_copy(left, ctx);
-            rope_set_right(cat, rope_leaf_new_concat(left->right->buf, right->buf, ctx));
+            rope_set_right(cat, rope_leaf_new_concat(left->right->str_buf->bytes, right->str_buf->bytes, ctx));
             return cat;
         }
     }
@@ -320,11 +322,11 @@ rope_split_at_char(struct rope_t *rn, int64_t i,
         } else {
             int32_t byte_offset = 0;
             for (int32_t j = 0; j < i; j++) {
-                byte_offset += bytes_in_codepoint(*(rn->buf + byte_offset));
+                byte_offset += bytes_in_codepoint(*(rn->str_buf->bytes + byte_offset));
             }
-            *out_new_right = rope_leaf_new(rn->buf + byte_offset, ctx);
+            *out_new_right = rope_leaf_new(rn->str_buf->bytes + byte_offset, ctx);
 
-            *out_new_left = rope_leaf_new(rn->buf, ctx);
+            *out_new_left = rope_leaf_new(rn->str_buf->bytes, ctx);
             (*out_new_left)->byte_weight = rn->byte_weight - (*out_new_right)->byte_weight;
             (*out_new_left)->char_weight = rn->char_weight - (*out_new_right)->char_weight;
         }
@@ -420,7 +422,8 @@ rope_print(struct rope_t *rn)
     }
 
     if (rn->flags & ROPE_LEAF) {
-        printf("%.*s", (int) rn->byte_weight, rn->buf);
+        // todo(chad): replace this with a new buf fmt specifier
+        printf("%.*s", (int) rn->byte_weight, rn->str_buf->bytes);
     } else {
         rope_print(rn->left);
         rope_print(rn->right);
@@ -436,13 +439,15 @@ rope_debug_print_helper(struct rope_t *rn, int indentation)
     }
 
     if (rn->flags & ROPE_LEAF) {
+        // todo(chad): replace all this with buf_t stuff
         printf("%*c{byte_weight: %lli, char_weight: %lli}[rc:%d] %.*s\n",
                indentation, ' ',
                rn->byte_weight,
                rn->char_weight,
                rn->rc,
-               (int) rn->byte_weight, rn->buf);
+               (int) rn->byte_weight, rn->str_buf->bytes);
     } else {
+        // todo(chad): replace all this with buf_t stuff
         printf("%*c{byte_weight: %lli, char_weight: %lli}[rc:%d]\n",
                indentation,
                ' ',

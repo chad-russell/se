@@ -1,0 +1,1 @@
+- use a slab allocator for all rope_t allocations

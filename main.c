@@ -150,19 +150,19 @@ test_append_delete(struct rope_t *rn, struct editor_buffer_t ctx)
 {
     struct rope_t *saved;
 
-    for (int i = 0; i < 30; i++) {
+    while (1) {
         // append
         saved = rn;
         rn = rope_append(rn, "a", ctx);
         rope_free(saved);
 
-//        // delete
-//        saved = rn;
-//        int64_t end = rope_total_char_length(rn);
-//        if (end > 0) {
-//            rn = rope_delete(rn, end - 1, end, ctx);
-//            rope_free(saved);
-//        }
+        // delete
+        saved = rn;
+        int64_t end = rope_total_char_length(rn);
+        if (end > 0) {
+            rn = rope_delete(rn, end - 1, end, ctx);
+            rope_free(saved);
+        }
     }
 }
 
