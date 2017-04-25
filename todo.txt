@@ -1,1 +1,4 @@
+- standardize commands, write serializer/deserializer
+    - use this to bootstrap a test runner
+
 - use a slab allocator for all rope_t allocations

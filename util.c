@@ -15,14 +15,15 @@ string_concat(const char *str1, const char *str2)
     size_t size1 = strlen(str1);
     size_t size2 = strlen(str2);
 
-    const char *str = se_calloc(sizeof(char), size1 + size2);
+    const char *str = se_calloc(sizeof(char), (int64_t) (size1 + size2));
     memcpy((void *) str, str1, size1);
     memcpy((void *) str + size1, str2, size2);
     return str;
 }
 
 int32_t
-bytes_in_codepoint(char first_byte) {
+bytes_in_codepoint(char first_byte)
+{
     if (first_byte >= '\x00' && first_byte <= '\x7F') {
         return 1;
     }
@@ -35,7 +36,7 @@ bytes_in_codepoint(char first_byte) {
     if (first_byte >= '\xF0' && first_byte <= '\xF4') {
         return 4;
     }
-    SE_UNREACHABLE()
+    SE_UNREACHABLE();
 }
 
 int64_t
@@ -57,9 +58,9 @@ unicode_strlen(const char *str)
 }
 
 void *
-se_calloc(size_t count, size_t size)
+se_calloc(int64_t count, int64_t size)
 {
-    return calloc(count, size);
+    return calloc((size_t) count, (size_t) size);
 }
 
 void

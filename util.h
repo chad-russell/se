@@ -7,11 +7,11 @@
 
 #include <assert.h>
 
-#define SE_ASSERT(cond) assert(cond);
-#define SE_ASSERT_MSG(cond, msg) assert(cond && msg);
+#define SE_ASSERT(cond) assert(cond)
+#define SE_ASSERT_MSG(cond, msg) SE_ASSERT(cond && msg)
 #define SE_PANIC(msg) SE_ASSERT_MSG(0, msg)
-#define SE_UNREACHABLE() SE_PANIC("unreachable") exit(1);
-#define SE_TODO() SE_PANIC("todo") exit(1);
+#define SE_UNREACHABLE() SE_PANIC("unreachable"); exit(1)
+#define SE_TODO() SE_PANIC("todo"); exit(1)
 
 const char *
 string_concat(const char *str1, const char *str2);
@@ -23,7 +23,7 @@ int64_t
 unicode_strlen(const char *str);
 
 void *
-se_calloc(size_t count, size_t size);
+se_calloc(int64_t count, int64_t size);
 
 void
 se_free(void *mem);
