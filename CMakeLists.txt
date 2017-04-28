@@ -3,7 +3,7 @@ project(se)
 
 set(CMAKE_C_STANDARD 99)
 
-set(SOURCE_FILES main.c forward_types.h rope.h rope.c util.h util.c vector.h vector.c buf.h buf.c stack.c stack.h circular_buffer.c circular_buffer.h)
+set(SOURCE_FILES main.c forward_types.h rope.h rope.c util.h util.c vector.h vector.c buf.h buf.c stack.c stack.h circular_buffer.c circular_buffer.h json_tokenize.c json_tokenize.h)
 add_executable(se ${SOURCE_FILES})
 
 # path to libczmq.a

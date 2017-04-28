@@ -10,11 +10,11 @@
 struct vector_t *
 vector_init(int64_t initial_capacity, int32_t item_size)
 {
-    struct vector_t *vec = (struct vector_t *) se_calloc(1, sizeof(struct vector_t));
+    struct vector_t *vec = (struct vector_t *) se_alloc(1, sizeof(struct vector_t));
     vec->length = 0;
     vec->capacity = initial_capacity;
     vec->item_size = item_size;
-    vec->buf = se_calloc(initial_capacity, item_size);
+    vec->buf = se_alloc(initial_capacity, item_size);
     return vec;
 }
 
@@ -61,7 +61,7 @@ void vector_grow(struct vector_t *vector)
 
     int64_t new_capacity = vector->capacity * 2;
 
-    void *new_buf = se_calloc(new_capacity, vector->item_size);
+    void *new_buf = se_alloc(new_capacity, vector->item_size);
     void *old_buf = vector->buf;
 
     memcpy(new_buf,

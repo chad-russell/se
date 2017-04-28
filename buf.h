@@ -20,9 +20,6 @@ struct buf_t {
     char *bytes;
 
     int32_t rc;
-
-    // formatting stuff
-    int32_t indent;
 };
 
 typedef void (*write_fn_t)(struct buf_t *buf, va_list list);

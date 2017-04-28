@@ -13,7 +13,7 @@ struct rope_t *
 rope_parent_init(struct rope_t *left, struct rope_t *right);
 
 struct rope_t *
-rope_leaf_init(const char *buf);
+rope_leaf_init(const char *text);
 
 // methods
 void

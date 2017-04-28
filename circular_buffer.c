@@ -2,48 +2,68 @@
 // Created by Chad Russell on 4/24/17.
 //
 
-#include <stddef.h>
 #include <string.h>
 
 #include "circular_buffer.h"
 #include "util.h"
+#include "buf.h"
 
 struct circular_buffer_t *
 circular_buffer_init(int32_t item_size, int64_t capacity)
 {
-    struct circular_buffer_t *buf = se_calloc(1, sizeof(struct circular_buffer_t));
+    struct circular_buffer_t *buf = se_alloc(1, sizeof(struct circular_buffer_t));
     buf->item_size = item_size;
     buf->capacity = capacity;
-    buf->buf = se_calloc(capacity, item_size);
-    buf->head = 0;
-    buf->tail = 0;
+    buf->buf = se_alloc(capacity, item_size);
+    buf->start = 0;
+    buf->next_write_index = 0;
+    buf->length = 0;
     return buf;
 }
 
 void *
 circular_buffer_at(struct circular_buffer_t *buf, int64_t index)
 {
-    int64_t real_index = (buf->head + index) % buf->capacity;
-
+    int64_t real_index = (buf->start + index) % buf->capacity;
     return buf->buf + real_index * buf->item_size;
+}
+
+void *
+circular_buffer_at_end(struct circular_buffer_t *buf)
+{
+    return buf->buf + (buf->next_write_index * buf->item_size);
 }
 
 void
 circular_buffer_append(struct circular_buffer_t *buf, void *item)
 {
     if (circular_buffer_is_full(buf)) {
-        buf->head = (buf->head + 1) % buf->capacity;
-    }
+        buf->start = (buf->start + 1) % buf->capacity;
+    } else {
+        buf->length += 1;
+    };
 
-    void *tail_ptr = buf->buf + (buf->tail * buf->item_size);
-    memcpy(tail_ptr, item, buf->item_size);
+    void *write_ptr = buf->buf + (buf->next_write_index * buf->item_size);
+    memcpy(write_ptr, item, buf->item_size);
 
-    buf->tail = (buf->tail + 1) % buf->capacity;
+    buf->next_write_index = (buf->next_write_index + 1) % buf->capacity;
 }
 
 int32_t
 circular_buffer_is_full(struct circular_buffer_t *buf)
 {
-    int64_t before_head = (buf->head + buf->capacity - 1) % buf->capacity;
-    return buf->tail == before_head;
+    return buf->length == buf->capacity;
+}
+
+void
+circular_buffer_set_next_write_index_null(struct circular_buffer_t *buf)
+{
+    memset(buf->buf + buf->next_write_index * buf->item_size, 0, buf->item_size);
+}
+
+void
+circular_buffer_truncate(struct circular_buffer_t *buf, int64_t idx)
+{
+    buf->length = idx + 1;
+    buf->next_write_index = (buf->start + idx + 1) % buf->capacity;
 }

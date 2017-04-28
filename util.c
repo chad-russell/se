@@ -9,18 +9,6 @@
 
 #include "util.h"
 
-const char *
-string_concat(const char *str1, const char *str2)
-{
-    size_t size1 = strlen(str1);
-    size_t size2 = strlen(str2);
-
-    const char *str = se_calloc(sizeof(char), (int64_t) (size1 + size2));
-    memcpy((void *) str, str1, size1);
-    memcpy((void *) str + size1, str2, size2);
-    return str;
-}
-
 int32_t
 bytes_in_codepoint(char first_byte)
 {
@@ -58,7 +46,7 @@ unicode_strlen(const char *str)
 }
 
 void *
-se_calloc(int64_t count, int64_t size)
+se_alloc(int64_t count, int64_t size)
 {
     return calloc((size_t) count, (size_t) size);
 }

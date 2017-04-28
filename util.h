@@ -13,9 +13,6 @@
 #define SE_UNREACHABLE() SE_PANIC("unreachable"); exit(1)
 #define SE_TODO() SE_PANIC("todo"); exit(1)
 
-const char *
-string_concat(const char *str1, const char *str2);
-
 int
 bytes_in_codepoint(char first_byte);
 
@@ -23,7 +20,7 @@ int64_t
 unicode_strlen(const char *str);
 
 void *
-se_calloc(int64_t count, int64_t size);
+se_alloc(int64_t count, int64_t size);
 
 void
 se_free(void *mem);

@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <printf.h>
 
 #include "rope.h"
 #include "util.h"
@@ -52,17 +53,11 @@ rope_parent_init(struct rope_t *left, struct rope_t *right)
     return rn;
 }
 
-// todo(chad): @performance
-// this is potentially a lot of overhead to copy this every time.
-// we should probably have a convenience method to init from a buf and an offset.
-// we can initialize the new buf using the bytes of the old one and increment the rc of the old one,
-// the only question is how to remember to decrement the rc of the old one after the new one is freed.
-// probably need a 'struct buf_t *parent' member in buf_t.
 struct rope_t *
-rope_leaf_init(const char *buf)
+rope_leaf_init(const char *text)
 {
-    struct rope_t *rn = rope_new(ROPE_LEAF, (int64_t) strlen(buf), unicode_strlen(buf));
-    rn->str_buf = buf_init_fmt("%str", buf);
+    struct rope_t *rn = rope_new(ROPE_LEAF, (int64_t) strlen(text), unicode_strlen(text));
+    rn->str_buf = buf_init_fmt("%str", text);
     return rn;
 }
 
@@ -227,13 +222,17 @@ rope_free(struct rope_t *rn)
 void
 undo_stack_append(struct editor_buffer_t ctx, struct editor_screen_t screen)
 {
-    // if the circular buffer is full, free what is at the head as it will be overwritten
-    if (circular_buffer_is_full(ctx.undo_buffer)) {
-        struct editor_screen_t *screen_0 = circular_buffer_at(ctx.undo_buffer, 0);
-        rope_free(screen_0->rn);
+    // if we are overwriting something, free it first
+    struct editor_screen_t *screen_to_overwrite = circular_buffer_at_end(ctx.undo_buffer);
+    if (screen_to_overwrite != NULL) {
+        rope_dec_rc(screen_to_overwrite->rn);
+
+        // nullify this so that the next time we come to it we don't try to free garbage rope data
+        circular_buffer_set_next_write_index_null(ctx.undo_buffer);
     }
 
-    SE_ASSERT(screen.rn->rc == 0);
+    rope_inc_rc(screen.rn);
+
     circular_buffer_append(ctx.undo_buffer, &screen);
 }
 
@@ -253,7 +252,7 @@ rope_shallow_copy(struct rope_t *rn)
 {
     if (rn == NULL) { return NULL; }
 
-    struct rope_t *copy = se_calloc(sizeof(struct rope_t), 1);
+    struct rope_t *copy = se_alloc(1, sizeof(struct rope_t));
     memcpy(copy, rn, sizeof(struct rope_t));
 
     copy->rc = 0;
@@ -272,7 +271,7 @@ rope_shallow_copy(struct rope_t *rn)
 struct rope_t *
 rope_new(int16_t flags, int64_t byte_weight, int64_t char_weight)
 {
-    struct rope_t *rn = se_calloc(1, sizeof(struct rope_t));
+    struct rope_t *rn = se_alloc(1, sizeof(struct rope_t));
 
     rn->rc = 0;
     rn->flags = flags;
@@ -364,16 +363,11 @@ rope_split_at_char(struct rope_t *rn, int64_t i,
             }
             *out_new_right = rope_leaf_init(rn->str_buf->bytes + byte_offset);
 
-            buf_print_fmt("total: %str\n", rn->str_buf->bytes);
-            buf_print_fmt("right: %rope\n", *out_new_right);
-
             struct buf_t *new_left_buf = buf_init_fmt("%n_str",
                                                       byte_offset,
                                                       rn->str_buf->bytes);
             *out_new_left = rope_leaf_init(new_left_buf->bytes);
             buf_free(new_left_buf);
-
-            buf_print_fmt("left: %rope\n", *out_new_left);
         }
     } else {
         struct rope_t *rn_copy = rope_shallow_copy(rn);
