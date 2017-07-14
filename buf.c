@@ -382,7 +382,7 @@ buf_write_rope(struct buf_t *buf, struct rope_t *rn)
     }
 
     if (rn->flags & ROPE_LEAF) {
-        buf_write_bytes_e(buf, rn->str_buf->bytes, rn->byte_weight);
+        buf_write_bytes(buf, rn->str_buf->bytes, rn->byte_weight);
         return;
     }
 
