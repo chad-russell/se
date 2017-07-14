@@ -1,7 +1,3 @@
-//
-// Created by Chad Russell on 2/28/17.
-//
-
 #include <string.h>
 #include <assert.h>
 #include "vector.h"

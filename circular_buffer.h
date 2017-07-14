@@ -1,7 +1,3 @@
-//
-// Created by Chad Russell on 4/24/17.
-//
-
 #ifndef SE_CIRCULAR_BUFFER_H
 #define SE_CIRCULAR_BUFFER_H
 
@@ -26,6 +22,9 @@ circular_buffer_at(struct circular_buffer_t *buf, int64_t index);
 
 void *
 circular_buffer_at_end(struct circular_buffer_t *buf);
+
+void *
+circular_buffer_next(struct circular_buffer_t *buf);
 
 void
 circular_buffer_append(struct circular_buffer_t *buf, void *item);

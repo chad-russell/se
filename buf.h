@@ -1,7 +1,3 @@
-//
-// Created by Chad Russell on 11/8/16.
-//
-
 #ifndef SWL_BUF_H
 #define SWL_BUF_H
 
@@ -60,6 +56,16 @@ buf_write_fmt_specifier(struct buf_t *buf, const char *spec, va_list list);
 void
 buf_write_bytes(struct buf_t *buf, const char *bytes, int64_t byte_count);
 
+void
+buf_write_bytes_va(struct buf_t *buf, va_list list);
+
+// write_bytes_e
+void
+buf_write_bytes_e(struct buf_t *buf, const char *bytes, int64_t byte_count);
+
+void
+buf_write_bytes_e_va(struct buf_t *buf, va_list list);
+
 // write_str
 void
 buf_write_str(struct buf_t *buf, const char *str);
@@ -67,12 +73,12 @@ buf_write_str(struct buf_t *buf, const char *str);
 void
 buf_write_str_va(struct buf_t *buf, va_list list);
 
-// write_n_str
+// write_str_une
 void
-buf_write_n_str(struct buf_t *buf, int64_t num_chars, const char *str);
+buf_write_str_une(struct buf_t *buf, int64_t num_chars, const char *str);
 
 void
-buf_write_n_str_va(struct buf_t *buf, va_list list);
+buf_write_str_une_va(struct buf_t *buf, va_list list);
 
 // write_char
 void

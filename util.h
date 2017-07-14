@@ -1,7 +1,3 @@
-//
-// Created by Chad Russell on 4/12/17.
-//
-
 #ifndef SE_UTIL_H
 #define SE_UTIL_H
 
@@ -14,7 +10,7 @@
 #define SE_TODO() SE_PANIC("todo"); exit(1)
 
 int
-bytes_in_codepoint(char first_byte);
+bytes_in_codepoint_utf8(char first_byte);
 
 int64_t
 unicode_strlen(const char *str);

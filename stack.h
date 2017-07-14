@@ -1,7 +1,3 @@
-//
-// Created by Chad Russell on 4/24/17.
-//
-
 #ifndef SE_STACK_H
 #define SE_STACK_H
 

@@ -1,7 +1,3 @@
-//
-// Created by Chad Russell on 2/28/17.
-//
-
 #ifndef SWL_VECTOR_H
 #define SWL_VECTOR_H
 

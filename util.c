@@ -1,16 +1,12 @@
-//
-// Created by Chad Russell on 4/12/17.
-//
-
-
 #include <stddef.h>
 #include <string.h>
 #include <stdlib.h>
+#include <printf.h>
 
 #include "util.h"
 
 int32_t
-bytes_in_codepoint(char first_byte)
+bytes_in_codepoint_utf8(char first_byte)
 {
     if (first_byte >= '\x00' && first_byte <= '\x7F') {
         return 1;
@@ -34,7 +30,7 @@ unicode_strlen(const char *str)
 
     const char *c = str;
     while (*c != 0) {
-        int32_t bytes = bytes_in_codepoint(*c);
+        int32_t bytes = bytes_in_codepoint_utf8(*c);
         for (int32_t i = 0; i < bytes; i++) {
             SE_ASSERT_MSG(c + i != NULL, "malformed utf-8!");
         }
@@ -48,7 +44,8 @@ unicode_strlen(const char *str)
 void *
 se_alloc(int64_t count, int64_t size)
 {
-    return calloc((size_t) count, (size_t) size);
+    void *allocated = calloc((size_t) count, (size_t) size);
+    return allocated;
 }
 
 void

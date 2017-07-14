@@ -1,7 +1,3 @@
-//
-// Created by Chad Russell on 11/8/16.
-//
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -92,7 +88,7 @@ struct buf_t *
 buf_write_fmt_va(struct buf_t *buf, const char *fmt, va_list list)
 {
     if (buf == NULL) {
-        unsigned long min_init_len = strlen(fmt) + 16;
+        unsigned long min_init_len = strlen(fmt) + 512;
         int64_t init_len;
         for (init_len = 16; init_len < min_init_len; init_len *= 2) { }
         buf = buf_init(init_len);
@@ -126,11 +122,17 @@ buf_write_fmt_specifier_helper(struct buf_t *buf, const char *src, const char *s
 int32_t
 buf_write_fmt_specifier(struct buf_t *buf, const char *src, va_list list)
 {
+    if (buf_write_fmt_specifier_helper(buf, src, "bytes_e", buf_write_bytes_e_va, list)) {
+        return (int32_t) strlen("bytes_e");
+    }
+    if (buf_write_fmt_specifier_helper(buf, src, "bytes", buf_write_bytes_va, list)) {
+        return (int32_t) strlen("bytes");
+    }
+    if (buf_write_fmt_specifier_helper(buf, src, "str_une", buf_write_str_une_va, list)) {
+        return (int32_t) strlen("str_une");
+    }
     if (buf_write_fmt_specifier_helper(buf, src, "str", buf_write_str_va, list)) {
         return (int32_t) strlen("str");
-    }
-    if (buf_write_fmt_specifier_helper(buf, src, "n_str", buf_write_n_str_va, list)) {
-        return (int32_t) strlen("n_str");
     }
     if (buf_write_fmt_specifier_helper(buf, src, "char", buf_write_char_va, list)) {
         return (int32_t) strlen("char");
@@ -161,6 +163,38 @@ buf_write_fmt_specifier(struct buf_t *buf, const char *src, va_list list)
     exit(-1);
 }
 
+// write_bytes_e
+void
+buf_write_bytes_e(struct buf_t *buf, const char *bytes, int64_t byte_count)
+{
+    for (int64_t i = 0; i < byte_count; i++) {
+        if (bytes[i] == '\n') {
+            buf_write_char(buf, '\\');
+            buf_write_char(buf, 'n');
+        } else if (bytes[i] == '\r') {
+            buf_write_char(buf, '\\');
+            buf_write_char(buf, 'r');
+        } else if (bytes[i] == '\t') {
+            buf_write_char(buf, '\\');
+            buf_write_char(buf, 't');
+        } else if (bytes[i] == '"') {
+            buf_write_char(buf, '\\');
+            buf_write_char(buf, '"');
+        } else if (bytes[i] == '\\') {
+            buf_write_char(buf, '\\');
+            buf_write_char(buf, '\\');
+        } else {
+            buf_write_char(buf, bytes[i]);
+        }
+    }
+}
+
+void
+buf_write_bytes_e_va(struct buf_t *buf, va_list list)
+{
+    buf_write_bytes_e(buf, va_arg(list, const char *), va_arg(list, int64_t));
+}
+
 // write_bytes
 void
 buf_write_bytes(struct buf_t *buf, const char *bytes, int64_t byte_count)
@@ -170,6 +204,12 @@ buf_write_bytes(struct buf_t *buf, const char *bytes, int64_t byte_count)
     char *bytes_ptr = buf->bytes;
     memcpy(bytes_ptr + buf->length, bytes, byte_count);
     buf->length += byte_count;
+}
+
+void
+buf_write_bytes_va(struct buf_t *buf, va_list list)
+{
+    buf_write_bytes(buf, va_arg(list, const char *), va_arg(list, int64_t));
 }
 
 // write_str
@@ -186,17 +226,44 @@ buf_write_str_va(struct buf_t *buf, va_list list)
     buf_write_str(buf, va_arg(list, const char *));
 }
 
-// write_n_str
+// write_str_une
 void
-buf_write_n_str(struct buf_t *buf, int64_t num_chars, const char *str)
+buf_write_str_une(struct buf_t *buf, int64_t num_chars, const char *str)
 {
-    buf_write_bytes(buf, str, num_chars);
+    for (int64_t i = 0; i < num_chars;) {
+        if (str[i] == '\\') {
+            i += 1;
+            if (i < num_chars) {
+                switch (str[i]) {
+                    case 'n': {
+                        buf_write_char(buf, '\n');
+                    } break;
+                    case 'r': {
+                        buf_write_char(buf, '\r');
+                    } break;
+                    case 't': {
+                        buf_write_char(buf, '\t');
+                    } break;
+                    case '"': {
+                        buf_write_char(buf, '"');
+                    } break;
+                    case '\\': {
+                        buf_write_char(buf, '\\');
+                    } break;
+                    default:break;
+                }
+            }
+        } else {
+            buf_write_char(buf, str[i]);
+        }
+        i += 1;
+    }
 }
 
 void
-buf_write_n_str_va(struct buf_t *buf, va_list list)
+buf_write_str_une_va(struct buf_t *buf, va_list list)
 {
-    buf_write_n_str(buf, va_arg(list, int64_t), va_arg(list, const char *));
+    buf_write_str_une(buf, va_arg(list, int64_t), va_arg(list, const char *));
 }
 
 // write_char
@@ -315,7 +382,7 @@ buf_write_rope(struct buf_t *buf, struct rope_t *rn)
     }
 
     if (rn->flags & ROPE_LEAF) {
-        buf_write_bytes(buf, rn->str_buf->bytes, rn->byte_weight);
+        buf_write_bytes_e(buf, rn->str_buf->bytes, rn->byte_weight);
         return;
     }
 
@@ -339,12 +406,12 @@ buf_write_rope_debug_helper(struct buf_t *buf, struct rope_t *rn, int32_t indent
     }
 
     if (rn->flags & ROPE_LEAF) {
-        buf_write_fmt(buf, "%r_char{byte_weight: %i64, char_weight: %i64}[rc:%i32] %n_str\n",
+        buf_write_fmt(buf, "%r_char{byte_weight: %i64, char_weight: %i64}[rc:%i32] %bytes_e\n",
                       indent, ' ',
                       rn->byte_weight,
                       rn->char_weight,
                       rn->rc,
-                      rn->byte_weight, rn->str_buf->bytes);
+                      rn->str_buf->bytes, rn->byte_weight);
     } else {
         buf_write_fmt(buf, "%r_char{byte_weight: %i64, char_weight: %i64}[rc:%i32]\n",
                       indent, ' ',

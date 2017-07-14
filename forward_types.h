@@ -1,11 +1,10 @@
-//
-// Created by Chad Russell on 4/12/17.
-//
-
 #ifndef SE_ALL_TYPES_H
 #define SE_ALL_TYPES_H
 
 #include "vector.h"
+
+#define UNDO_BUFFER_SIZE 10
+#define GLOBAL_UNDO_BUFFER_SIZE 100
 
 enum ROPE_FLAGS {
     ROPE_LEAF = 1
@@ -14,6 +13,7 @@ enum ROPE_FLAGS {
 struct rope_t {
     int64_t byte_weight;
     int64_t char_weight;
+    int64_t line_break_weight;
 
     int16_t flags;
 
@@ -29,9 +29,7 @@ struct rope_t {
 };
 
 struct cursor_info_t {
-    int64_t cursor_pos;
-    int64_t cursor_byte_pos;
-    int64_t cursor_row;
+    int64_t cursor_line;
     int64_t cursor_col;
 };
 
@@ -41,7 +39,8 @@ struct editor_screen_t {
 };
 
 struct editor_buffer_t {
-    struct circular_buffer_t *undo_buffer; // circular buffer of (struct editor_screen_t) roots
+    struct circular_buffer_t *global_undo_buffer; // circular buffer of (struct editor_screen_t)
+    struct circular_buffer_t *undo_buffer; // circular buffer of (struct editor_screen_t)
 };
 
 #endif //SE_ALL_TYPES_H

@@ -1,4 +1,12 @@
-- standardize commands, write serializer/deserializer
-    - use this to bootstrap a test runner
+- standardize editing commands, they should all take and return an editor_buffer_t
+    - insert
+    - append (convenience for 'insert at end')
+    - delete
+    - undo/redo
+    - get text within a region (between two char #s or line:col - line:col)
+
+- support UTF-16
+    - Use BOM if applicable to determine file encoding (and, of course, byte order)
 
 - use a slab allocator for all rope_t allocations
+    - or, maybe find a way to use something like jon blow's 'temporary allocator' (keep a temp buffer in a context for example)

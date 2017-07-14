@@ -1,7 +1,3 @@
-//
-// Created by Chad Russell on 4/24/17.
-//
-
 #include <string.h>
 
 #include "circular_buffer.h"
@@ -30,6 +26,12 @@ circular_buffer_at(struct circular_buffer_t *buf, int64_t index)
 
 void *
 circular_buffer_at_end(struct circular_buffer_t *buf)
+{
+    return circular_buffer_at(buf, buf->length - 1);
+}
+
+void *
+circular_buffer_next(struct circular_buffer_t *buf)
 {
     return buf->buf + (buf->next_write_index * buf->item_size);
 }

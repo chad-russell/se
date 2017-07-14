@@ -1,7 +1,3 @@
-//
-// Created by Chad Russell on 4/24/17.
-//
-
 #include <assert.h>
 
 #include "stack.h"
