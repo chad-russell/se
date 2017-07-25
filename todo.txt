@@ -1,10 +1,3 @@
-- standardize editing commands, they should all take and return an editor_buffer_t
-    - insert
-    - append (convenience for 'insert at end')
-    - delete
-    - undo/redo
-    - get text within a region (between two char #s or line:col - line:col)
-
 - support UTF-16
     - Use BOM if applicable to determine file encoding (and, of course, byte order)
 

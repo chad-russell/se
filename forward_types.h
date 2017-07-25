@@ -29,8 +29,7 @@ struct rope_t {
 };
 
 struct cursor_info_t {
-    int64_t cursor_line;
-    int64_t cursor_col;
+    int64_t char_pos;
 };
 
 struct editor_screen_t {
@@ -39,6 +38,8 @@ struct editor_screen_t {
 };
 
 struct editor_buffer_t {
+    struct buf_t *file_path;
+
     struct circular_buffer_t *global_undo_buffer; // circular buffer of (struct editor_screen_t)
     struct circular_buffer_t *undo_buffer; // circular buffer of (struct editor_screen_t)
 };

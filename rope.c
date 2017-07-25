@@ -127,14 +127,13 @@ rope_char_number_at_line(struct rope_t *rn, int64_t i)
         int32_t byte_offset = 0;
         int64_t char_number = 0;
         for (int32_t j = 0; j < i; j++) {
-            char byte_at_offset = *(rn->str_buf->bytes + byte_offset);
             while (*(rn->str_buf->bytes + byte_offset) != '\n') {
-                byte_offset += bytes_in_codepoint_utf8(byte_at_offset);
+                byte_offset += bytes_in_codepoint_utf8(*(rn->str_buf->bytes + byte_offset));
                 char_number += 1;
             }
 
             // go one further so that we skip the actual '\n' character itself
-            byte_offset += bytes_in_codepoint_utf8(byte_at_offset);
+            byte_offset += bytes_in_codepoint_utf8(*(rn->str_buf->bytes + byte_offset));
             char_number += 1;
         }
 

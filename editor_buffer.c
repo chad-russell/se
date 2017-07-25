@@ -10,11 +10,13 @@ editor_buffer_create()
     struct editor_buffer_t editor_buffer;
     editor_buffer.undo_buffer = circular_buffer_init(sizeof(struct editor_screen_t), UNDO_BUFFER_SIZE);
     editor_buffer.global_undo_buffer = circular_buffer_init(sizeof(struct editor_screen_t), GLOBAL_UNDO_BUFFER_SIZE);
+    editor_buffer.file_path = buf_init(0);
 
     struct editor_screen_t screen;
     screen.rn = rope_leaf_init("");
-    screen.cursor_info.cursor_line = 0;
-    screen.cursor_info.cursor_col = 0;
+
+    screen.cursor_info.char_pos = 0;
+
     undo_stack_append(editor_buffer, screen);
 
     return editor_buffer;
@@ -82,47 +84,72 @@ struct editor_screen_t
 editor_buffer_open_file(struct editor_buffer_t editor_buffer, const char *file_path)
 {
     struct editor_screen_t screen;
+    screen.cursor_info.char_pos = 0;
     screen.rn = read_file(file_path);
-    screen.cursor_info.cursor_line = 0;
-    screen.cursor_info.cursor_col = 0;
+
     undo_stack_append(editor_buffer, screen);
+
+    *editor_buffer.file_path = *buf_init_fmt("%str", file_path);
 
     return screen;
 }
 
+int32_t
+editor_buffer_save_file(struct editor_buffer_t editor_buffer)
+{
+    if (editor_buffer.file_path == NULL) { return -1; }
+
+    FILE *file = fopen(editor_buffer.file_path->bytes, "w");
+    if (file == NULL) {
+        fprintf(stderr, "error opening file\n");
+        exit(-1);
+    }
+
+    rewind(file);
+
+    int32_t err = fprintf(file, "%s", editor_buffer_get_all_text(editor_buffer));
+
+    fclose(file);
+
+    return err;
+}
+
 struct editor_screen_t
-editor_buffer_insert(struct editor_buffer_t editor_buffer, int64_t i, const char *text)
+editor_buffer_insert(struct editor_buffer_t editor_buffer, const char *text)
 {
     struct editor_screen_t *screen = circular_buffer_at_end(editor_buffer.undo_buffer);
 
-    struct rope_t *edited = rope_insert(screen->rn, i, text);
+    struct rope_t *edited = rope_insert(screen->rn, screen->cursor_info.char_pos, text);
 
     struct editor_screen_t edited_screen;
     edited_screen.rn = edited;
+
+    // position cursor at the end of the insertion
     edited_screen.cursor_info = screen->cursor_info;
+    edited_screen.cursor_info.char_pos += 1;
+
     undo_stack_append(editor_buffer, edited_screen);
 
     return edited_screen;
 }
 
 struct editor_screen_t
-editor_buffer_append(struct editor_buffer_t editor_buffer, const char *text)
-{
-    struct editor_screen_t *screen = circular_buffer_at_end(editor_buffer.undo_buffer);
-    int64_t end = rope_total_char_length(screen->rn);
-    return editor_buffer_insert(editor_buffer, end, text);
-}
-
-struct editor_screen_t
-editor_buffer_delete(struct editor_buffer_t editor_buffer, int64_t start, int64_t end)
+editor_buffer_delete(struct editor_buffer_t editor_buffer)
 {
     struct editor_screen_t *screen = circular_buffer_at_end(editor_buffer.undo_buffer);
 
-    struct rope_t *edited = rope_delete(screen->rn, start, end);
+    if (screen->cursor_info.char_pos == 0) { return *screen; }
+
+    struct rope_t *edited = rope_delete(screen->rn, screen->cursor_info.char_pos - 1, screen->cursor_info.char_pos);
 
     struct editor_screen_t edited_screen;
     edited_screen.rn = edited;
+
     edited_screen.cursor_info = screen->cursor_info;
+    if (edited_screen.cursor_info.char_pos > 0) {
+        edited_screen.cursor_info.char_pos -= 1;
+    }
+
     undo_stack_append(editor_buffer, edited_screen);
 
     return edited_screen;
@@ -143,6 +170,20 @@ editor_buffer_global_undo(struct editor_buffer_t editor_buffer, int64_t undo_idx
     return *undone_screen;
 }
 
+int64_t
+editor_buffer_get_line_count(struct editor_buffer_t editor_buffer)
+{
+    struct editor_screen_t *screen = circular_buffer_at_end(editor_buffer.undo_buffer);
+    return rope_total_line_break_length(screen->rn);
+}
+
+int64_t
+editor_buffer_get_char_number_at_line(struct editor_buffer_t editor_buffer, int64_t i)
+{
+    struct editor_screen_t *screen = circular_buffer_at_end(editor_buffer.undo_buffer);
+    return rope_char_number_at_line(screen->rn, i);
+}
+
 const char *
 editor_buffer_get_text_between_characters(struct editor_buffer_t editor_buffer, int64_t start, int64_t end)
 {
@@ -152,7 +193,11 @@ editor_buffer_get_text_between_characters(struct editor_buffer_t editor_buffer, 
     struct buf_t *buf = buf_init(end - start + 1);
     for (int64_t i = start; i < end; i++) {
         const char *char_at = rope_char_at(r, i);
-        buf_write_bytes(buf, char_at, bytes_in_codepoint_utf8(*char_at));
+
+        // char_at will only be null if we are looking for a character past the end of the rope
+        if (char_at != NULL) {
+            buf_write_bytes(buf, char_at, bytes_in_codepoint_utf8(*char_at));
+        }
     }
 
     // todo(chad): this leaks :(. Need to figure out what to do with buf
@@ -178,4 +223,29 @@ editor_buffer_get_all_text(struct editor_buffer_t editor_buffer)
 
     // todo(chad): this leaks the buf :(
     return buf_init_fmt("%rope", screen->rn)->bytes;
+}
+
+int64_t
+editor_buffer_get_cursor_pos(struct editor_buffer_t editor_buffer)
+{
+    struct editor_screen_t *screen = circular_buffer_at_end(editor_buffer.undo_buffer);
+
+    return screen->cursor_info.char_pos;
+}
+
+void
+editor_buffer_set_cursor_pos_relative(struct editor_buffer_t editor_buffer, int64_t relative_cursor)
+{
+    struct editor_screen_t *screen = circular_buffer_at_end(editor_buffer.undo_buffer);
+
+    screen->cursor_info.char_pos += relative_cursor;
+
+    if (screen->cursor_info.char_pos < 0) {
+        screen->cursor_info.char_pos = 0;
+    }
+
+    int64_t total_length = rope_total_char_length(screen->rn);
+    if (screen->cursor_info.char_pos > total_length) {
+        screen->cursor_info.char_pos = total_length;
+    }
 }

@@ -6,6 +6,6 @@ set(CMAKE_C_STANDARD 99)
 set(SOURCE_FILES forward_types.h rope.h rope.c util.h util.c vector.h vector.c buf.h buf.c stack.c stack.h
         circular_buffer.c circular_buffer.h editor_buffer.h editor_buffer.c)
 
-#add_executable(se_test main.c ${SOURCE_FILES})
+add_executable(se_test main.c ${SOURCE_FILES})
 
 add_library(se STATIC ${SOURCE_FILES})
