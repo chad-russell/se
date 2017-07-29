@@ -33,6 +33,9 @@ int32_t
 circular_buffer_is_full(struct circular_buffer_t *buf);
 
 void
+circular_buffer_set_index_null(struct circular_buffer_t *buf, int64_t idx);
+
+void
 circular_buffer_set_next_write_index_null(struct circular_buffer_t *buf);
 
 void

@@ -33,6 +33,9 @@ rope_total_char_length(struct rope_t *rn);
 int64_t
 rope_total_line_break_length(struct rope_t *rn);
 
+int64_t
+rope_get_line_number_for_char_pos(struct rope_t *rn, int64_t char_pos);
+
 struct rope_t *
 rope_insert(struct rope_t *rn, int64_t i, const char *text);
 

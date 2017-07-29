@@ -4,7 +4,7 @@
 #include "vector.h"
 
 #define UNDO_BUFFER_SIZE 10
-#define GLOBAL_UNDO_BUFFER_SIZE 100
+#define GLOBAL_UNDO_BUFFER_SIZE 20
 
 enum ROPE_FLAGS {
     ROPE_LEAF = 1
@@ -30,6 +30,8 @@ struct rope_t {
 
 struct cursor_info_t {
     int64_t char_pos;
+    int64_t row;
+    int64_t col;
 };
 
 struct editor_screen_t {
@@ -42,6 +44,10 @@ struct editor_buffer_t {
 
     struct circular_buffer_t *global_undo_buffer; // circular buffer of (struct editor_screen_t)
     struct circular_buffer_t *undo_buffer; // circular buffer of (struct editor_screen_t)
+
+    int64_t *undo_idx;
+    int64_t *global_undo_idx;
+    struct editor_screen_t *current_screen;
 };
 
 #endif //SE_ALL_TYPES_H

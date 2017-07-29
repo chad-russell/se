@@ -58,6 +58,13 @@ circular_buffer_is_full(struct circular_buffer_t *buf)
 }
 
 void
+circular_buffer_set_index_null(struct circular_buffer_t *buf, int64_t idx)
+{
+    int64_t real_index = (buf->start + idx) % buf->capacity;
+    memset(buf->buf + real_index * buf->item_size, 0, buf->item_size);
+}
+
+void
 circular_buffer_set_next_write_index_null(struct circular_buffer_t *buf)
 {
     memset(buf->buf + buf->next_write_index * buf->item_size, 0, buf->item_size);

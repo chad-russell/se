@@ -7,7 +7,8 @@
 #include "buf.h"
 #include "circular_buffer.h"
 
-#define SPLIT_THRESHOLD 100
+#define SPLIT_THRESHOLD 4096
+#define COPY_THRESHOLD 1024
 
 // forward declarations
 struct rope_t *
@@ -24,6 +25,9 @@ rope_line_break_weight(struct rope_t *rn);
 
 int64_t
 count_newlines(const char *str);
+
+int64_t
+count_newlines_length(const char *str, int64_t i);
 
 void
 rope_split_at_char(struct rope_t *rn, int64_t i,
@@ -50,12 +54,33 @@ rope_parent_init(struct rope_t *left, struct rope_t *right)
 }
 
 struct rope_t *
+rope_leaf_init_length(const char *text, int64_t byte_length, int64_t char_length)
+{
+    if (char_length > SPLIT_THRESHOLD) {
+        int64_t half = char_length / 2;
+
+        const char *half_ptr = text;
+        for (int64_t i = 0; i < half; i++) {
+            half_ptr += bytes_in_codepoint_utf8(*half_ptr);
+        }
+
+        int64_t first_half_byte_length = (int64_t) (half_ptr - text);
+
+        struct rope_t *left = rope_leaf_init_length(text, first_half_byte_length, half);
+        struct rope_t *right = rope_leaf_init_length(half_ptr, byte_length - first_half_byte_length, char_length - half);
+        return rope_parent_init(left, right);
+    } else {
+        struct rope_t *rn = rope_new(ROPE_LEAF, byte_length, char_length);
+        rn->str_buf = buf_init_fmt("%bytes", text, byte_length);
+        rn->line_break_weight = count_newlines_length(text, byte_length);
+        return rn;
+    }
+}
+
+struct rope_t *
 rope_leaf_init(const char *text)
 {
-    struct rope_t *rn = rope_new(ROPE_LEAF, (int64_t) strlen(text), unicode_strlen(text));
-    rn->str_buf = buf_init_fmt("%str", text);
-    rn->line_break_weight = count_newlines(text);
-    return rn;
+    return rope_leaf_init_length(text, (int64_t) strlen(text), unicode_strlen(text));
 }
 
 // methods
@@ -199,6 +224,34 @@ rope_total_line_break_length(struct rope_t *rn)
     return rope_total_line_break_length(rn->left) + rope_total_line_break_length(rn->right);
 }
 
+int64_t
+rope_get_line_number_for_char_pos(struct rope_t *rn, int64_t char_pos)
+{
+    if (rn->flags & ROPE_LEAF) {
+        if (rn->char_weight < char_pos) {
+            return 0;
+        }
+
+        int32_t byte_offset = 0;
+        int32_t line_count = 0;
+        for (int32_t i = 0; i < char_pos; i++) {
+            if (*(rn->str_buf->bytes + byte_offset) == '\n') { line_count += 1; }
+            byte_offset += bytes_in_codepoint_utf8(*(rn->str_buf->bytes + byte_offset));
+        }
+        return line_count;
+    }
+
+    if (rn->char_weight - 1 < char_pos) {
+        return rope_total_line_break_length(rn->left)
+               + rope_get_line_number_for_char_pos(rn->right, char_pos - rn->char_weight);
+    } else {
+        if (rn->left != NULL) {
+            return rope_get_line_number_for_char_pos(rn->left, char_pos);
+        }
+        return 0;
+    }
+}
+
 struct rope_t *
 rope_insert(struct rope_t *rn, int64_t i, const char *text)
 {
@@ -262,6 +315,17 @@ rope_free(struct rope_t *rn)
 void
 undo_stack_append(struct editor_buffer_t editor_buffer, struct editor_screen_t screen)
 {
+    if (*editor_buffer.undo_idx + 1 < editor_buffer.undo_buffer->length) {
+        for (int64_t i = *editor_buffer.undo_idx + 1; i < editor_buffer.undo_buffer->length; i++) {
+            struct editor_screen_t *truncated_screen = circular_buffer_at(editor_buffer.undo_buffer, i);
+            rope_dec_rc(truncated_screen->rn);
+
+            // nullify this so that next time we come to it we don't try to free garbage rope data
+            circular_buffer_set_index_null(editor_buffer.undo_buffer, i);
+        }
+        circular_buffer_truncate(editor_buffer.undo_buffer, *editor_buffer.undo_idx);
+    }
+
     // if we are overwriting something, free it first
     struct editor_screen_t *screen_to_overwrite = circular_buffer_next(editor_buffer.undo_buffer);
     if (screen_to_overwrite != NULL) {
@@ -272,7 +336,9 @@ undo_stack_append(struct editor_buffer_t editor_buffer, struct editor_screen_t s
     }
 
     rope_inc_rc(screen.rn);
+
     circular_buffer_append(editor_buffer.undo_buffer, &screen);
+    *editor_buffer.undo_idx = editor_buffer.undo_buffer->length;
 
     global_only_undo_stack_append(editor_buffer, screen);
 }
@@ -289,7 +355,11 @@ global_only_undo_stack_append(struct editor_buffer_t editor_buffer, struct edito
     }
 
     rope_inc_rc(screen.rn);
+
     circular_buffer_append(editor_buffer.global_undo_buffer, &screen);
+    *editor_buffer.global_undo_idx = editor_buffer.global_undo_buffer->length;
+
+    *editor_buffer.current_screen = screen;
 }
 
 // helpers
@@ -408,6 +478,19 @@ count_newlines(const char *str)
     return newline_count;
 }
 
+int64_t
+count_newlines_length(const char *str, int64_t i)
+{
+    if (str == NULL) { return 0; }
+    int64_t newline_count = 0;
+
+    int length = 0;
+    for (const char *c = str; *c != 0 && length < i; c++, length++) {
+        if (*c == '\n') { newline_count += 1; }
+    }
+    return newline_count;
+}
+
 void
 rope_inc_rc(struct rope_t *rn)
 {
@@ -508,7 +591,7 @@ rope_concat(struct rope_t *left, struct rope_t *right)
     }
     if (right->flags & ROPE_LEAF) {
         if (left->flags & ROPE_LEAF) {
-            if (left->byte_weight + right->byte_weight < SPLIT_THRESHOLD) {
+            if (left->byte_weight + right->byte_weight < COPY_THRESHOLD) {
                 struct rope_t *cat = rope_leaf_init_concat(left, right);
                 return cat;
             }
@@ -519,7 +602,7 @@ rope_concat(struct rope_t *left, struct rope_t *right)
             return cat;
         }
         else if (left->right->flags & ROPE_LEAF
-                 && left->right->byte_weight + right->byte_weight < SPLIT_THRESHOLD) {
+                 && left->right->byte_weight + right->byte_weight < COPY_THRESHOLD) {
             struct rope_t *cat = rope_shallow_copy(left);
             rope_set_right(cat, rope_leaf_init_concat(left->right, right));
 
