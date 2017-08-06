@@ -3,17 +3,25 @@
 #include "forward_types.h"
 #include "editor_buffer.h"
 #include "util.h"
+#include "buf.h"
+
+void
+print_virtual_line(struct editor_buffer_t editor_buffer, int64_t line_number, int64_t virtual_line_length)
+{
+    struct buf_t *buf = editor_buffer_get_text_between_virtual_points(*editor_buffer.current_screen,
+                                                                      line_number, 0,
+                                                                      line_number + 1, 0,
+                                                                      virtual_line_length);
+    buf_print_fmt("%str\n", buf->bytes);
+}
 
 void
 test_scratch(struct editor_buffer_t editor_buffer)
 {
-    editor_buffer_open_file(editor_buffer, "/Users/chadrussell/Desktop/hello.txt");
-    editor_buffer_set_cursor_point(editor_buffer, 16, 7);
+    int64_t virtual_line_length = 10;
 
-    int64_t line0 = editor_buffer_get_char_number_at_line(editor_buffer, 0);
-    int64_t line1 = editor_buffer_get_char_number_at_line(editor_buffer, 1);
-    int64_t line_last = editor_buffer_get_char_number_at_line(editor_buffer, 15);
-    int64_t line_last_end = editor_buffer_get_end_of_row(editor_buffer, 15);
+    editor_buffer_open_file(editor_buffer, "/Users/chadrussell/Desktop/small_one_line.txt");
+    editor_buffer_set_cursor_point_virtual(editor_buffer, 3, 0, virtual_line_length);
 
     SE_ASSERT(1);
 }

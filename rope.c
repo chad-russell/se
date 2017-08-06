@@ -146,7 +146,7 @@ rope_char_number_at_line(struct rope_t *rn, int64_t i)
 {
     if (rn->flags & ROPE_LEAF) {
         if (rn->line_break_weight < i) {
-            return 0;
+            return rn->char_weight + 1; // todo(chad): this seems dangerous
         }
 
         int32_t byte_offset = 0;
@@ -330,6 +330,10 @@ undo_stack_append(struct editor_buffer_t editor_buffer, struct editor_screen_t s
     struct editor_screen_t *screen_to_overwrite = circular_buffer_next(editor_buffer.undo_buffer);
     if (screen_to_overwrite != NULL) {
         rope_dec_rc(screen_to_overwrite->rn);
+
+//        if (screen_to_overwrite->line_lengths != NULL) {
+//            vector_free(screen_to_overwrite->line_lengths);
+//        }
 
         // nullify this so that the next time we come to it we don't try to free garbage rope data
         circular_buffer_set_next_write_index_null(editor_buffer.undo_buffer);

@@ -3,8 +3,8 @@
 
 #include "vector.h"
 
-#define UNDO_BUFFER_SIZE 10
-#define GLOBAL_UNDO_BUFFER_SIZE 20
+#define UNDO_BUFFER_SIZE 1000
+#define GLOBAL_UNDO_BUFFER_SIZE 10000
 
 enum ROPE_FLAGS {
     ROPE_LEAF = 1
@@ -36,6 +36,7 @@ struct cursor_info_t {
 
 struct editor_screen_t {
     struct cursor_info_t cursor_info;
+    struct vector_t *line_lengths;
     struct rope_t *rn;
 };
 

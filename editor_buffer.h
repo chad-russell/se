@@ -31,7 +31,13 @@ struct editor_screen_t
 editor_buffer_global_undo(struct editor_buffer_t editor_buffer, int64_t undo_idx);
 
 int64_t
+editor_screen_get_line_length(struct editor_screen_t editor_screen, int64_t line);
+
+int64_t
 editor_screen_get_line_count(struct editor_screen_t editor_screen);
+
+int64_t
+editor_buffer_get_virtual_line_count(struct editor_buffer_t editor_buffer, int64_t virtual_line_length);
 
 int64_t
 editor_screen_get_char_count(struct editor_screen_t editor_screen);
@@ -45,6 +51,11 @@ editor_buffer_get_text_between_characters(struct editor_screen_t editor_screen, 
 struct buf_t *
 editor_buffer_get_text_between_points(struct editor_screen_t editor_screen, int64_t start_line, int64_t start_col, int64_t end_line, int64_t end_col);
 
+struct buf_t *
+editor_buffer_get_text_between_virtual_points(struct editor_screen_t editor_screen, int64_t start_line,
+                                              int64_t start_col, int64_t end_line, int64_t end_col,
+                                              int64_t virtual_line_length);
+
 const char *
 editor_buffer_get_all_text(struct editor_screen_t editor_screen);
 
@@ -56,6 +67,15 @@ editor_screen_get_cursor_row(struct editor_screen_t editor_screen);
 
 int64_t
 editor_screen_get_cursor_col(struct editor_screen_t editor_screen);
+
+int64_t
+editor_screen_get_cursor_row_virtual(struct editor_screen_t editor_screen, int64_t virtual_line_length);
+
+int64_t
+editor_screen_get_cursor_col_virtual(struct editor_screen_t editor_screen, int64_t virtual_line_length);
+
+struct editor_screen_t
+editor_buffer_set_cursor_point_virtual(struct editor_buffer_t editor_buffer, int64_t row, int64_t col, int64_t virtual_line_length);
 
 int64_t
 editor_buffer_get_undo_size(struct editor_buffer_t editor_buffer);
