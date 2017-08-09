@@ -27,6 +27,9 @@ vector_init_items_with_size(int32_t item_size, ...);
 struct vector_t *
 vector_init_ptrsize_items(void *first_item, ...);
 
+struct vector_t *
+vector_copy(struct vector_t *orig);
+
 // methods
 void
 vector_grow(struct vector_t *vector);

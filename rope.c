@@ -146,7 +146,7 @@ rope_char_number_at_line(struct rope_t *rn, int64_t i)
 {
     if (rn->flags & ROPE_LEAF) {
         if (rn->line_break_weight < i) {
-            return rn->char_weight + 1; // todo(chad): this seems dangerous
+            return rn->char_weight + 1;
         }
 
         int32_t byte_offset = 0;

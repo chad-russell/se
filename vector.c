@@ -51,6 +51,18 @@ struct vector_t *vector_init_ptrsize_items(void *first_item, ...)
     return vector;
 }
 
+struct vector_t *
+vector_copy(struct vector_t *orig)
+{
+    struct vector_t *copy = (struct vector_t *) se_alloc(1, sizeof(struct vector_t));
+    copy->length = orig->length;
+    copy->capacity = orig->capacity;
+    copy->item_size = orig->item_size;
+    copy->buf = se_alloc(orig->capacity, orig->item_size);
+    memcpy(copy->buf, orig->buf, copy->capacity * copy->item_size);
+    return copy;
+}
+
 void vector_grow(struct vector_t *vector)
 {
     assert(vector != NULL);

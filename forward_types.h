@@ -48,6 +48,7 @@ struct editor_buffer_t {
 
     int64_t *undo_idx;
     int64_t *global_undo_idx;
+
     struct editor_screen_t *current_screen;
 };
 
