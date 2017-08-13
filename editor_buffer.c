@@ -5,6 +5,7 @@
 #include "circular_buffer.h"
 #include "buf.h"
 #include "line_rope.h"
+#include "stack.h"
 
 void
 editor_screen_set_line_and_col_for_char_pos(struct editor_screen_t *editor_screen);
@@ -126,6 +127,16 @@ editor_screen_calculate_line_length(struct editor_screen_t screen, int64_t line)
 }
 
 void
+editor_screen_balance_lines_if_needed(struct editor_screen_t *screen)
+{
+    // todo(chad): come up with an actual condition here
+
+    struct line_rope_t *new_lines = line_rope_balance(screen->lines);
+    line_rope_free(screen->lines);
+    screen->lines = new_lines;
+}
+
+void
 editor_buffer_open_file(struct editor_buffer_t editor_buffer, const char *file_path)
 {
     struct editor_screen_t screen;
@@ -138,20 +149,56 @@ editor_buffer_open_file(struct editor_buffer_t editor_buffer, const char *file_p
 
     screen.text = read_file(file_path);
 
+    struct vector_t *stack = stack_init(sizeof(struct line_rope_t *));
+
     int64_t line = 0;
     int64_t char_number_at_current_line = 0;
     int64_t char_number_at_next_line = rope_char_number_at_line(screen.text, line + 1);
-    screen.lines = line_rope_leaf_init(char_number_at_next_line - char_number_at_current_line - 1);
+    struct line_rope_t *rn = line_rope_leaf_init(char_number_at_next_line - char_number_at_current_line - 1);
+    stack_push(stack, &rn);
     line += 1;
     int64_t lines = 1 + rope_total_line_break_length(screen.text);
     while (line < lines) {
         char_number_at_current_line = char_number_at_next_line;
         char_number_at_next_line = rope_char_number_at_line(screen.text, line + 1);
-        struct line_rope_t *old_lines = screen.lines;
-        screen.lines = line_rope_insert(screen.lines, line, char_number_at_next_line - char_number_at_current_line - 1);
-        line_rope_free(old_lines);
+
+//        struct line_rope_t *old_lines = screen.lines;
+//        screen.lines = line_rope_insert(screen.lines, line, char_number_at_next_line - char_number_at_current_line - 1);
+//        line_rope_free(old_lines);
+
+        rn = line_rope_leaf_init(char_number_at_next_line - char_number_at_current_line - 1);
+        stack_push(stack, &rn);
+
+        int8_t c = 0;
+        while (stack->length > 1 && !c) {
+            struct line_rope_t *top = (struct line_rope_t *) vector_at_deref(stack, stack->length - 1);
+            struct line_rope_t *second = (struct line_rope_t *) vector_at_deref(stack, stack->length - 2);
+            if (top->height == second->height) {
+                stack_pop(stack);
+                stack_pop(stack);
+
+                struct line_rope_t *new_line = line_rope_parent_init(second, top);
+                stack_push(stack, &new_line);
+            } else {
+                c = 1;
+            }
+        }
+
         line += 1;
     }
+
+    while (stack->length > 1) {
+        struct line_rope_t *top = (struct line_rope_t *) vector_at_deref(stack, stack->length - 1);
+        struct line_rope_t *second = (struct line_rope_t *) vector_at_deref(stack, stack->length - 2);
+        stack_pop(stack);
+        stack_pop(stack);
+
+        struct line_rope_t *new_line = line_rope_parent_init(second, top);
+        stack_push(stack, &new_line);
+    }
+    SE_ASSERT(stack->length == 1);
+    screen.lines = (struct line_rope_t *) stack_pop_deref(stack);
+    vector_free(stack);
 
     undo_stack_append(editor_buffer, screen);
 
@@ -351,42 +398,92 @@ editor_buffer_get_line_count(struct editor_buffer_t editor_buffer)
 }
 
 int64_t
+line_rope_char_at_virtual_newline(struct line_rope_t *rn, int64_t i)
+{
+    if (rn->is_leaf) {
+        if (rn->virtual_newline_count - 1 < i) {
+            return 0;
+        }
+
+        return 0;
+    }
+
+    if (rn->virtual_newline_count - 1 < i) {
+        return rn->char_weight + line_rope_char_at_virtual_newline(rn->right, i - rn->virtual_newline_count);
+    } else {
+        if (rn->left != NULL) {
+            return line_rope_char_at_virtual_newline(rn->left, i);
+        }
+        return 0;
+    }
+}
+
+int64_t
+virtual_newline_total(struct line_rope_t *rn, int64_t line)
+{
+    if (rn->is_leaf) {
+        if (rn->char_weight - 1 < line) {
+            return 0;
+        }
+
+        return rn->total_virtual_newline_count;
+    }
+
+    if (rn->char_weight - 1 < line) {
+        return rn->virtual_newline_count + virtual_newline_total(rn->right, line - rn->char_weight);
+    } else {
+        if (rn->left != NULL) {
+            return virtual_newline_total(rn->left, line);
+        }
+        return 0;
+    }
+}
+
+int64_t
 editor_buffer_character_position_for_virtual_point(struct editor_buffer_t editor_buffer,
                                                    int64_t line,
                                                    int64_t col,
                                                    int64_t virtual_line_length)
 {
-    int64_t current_line = 0;
-    int64_t current_line_length = editor_buffer_get_line_length(editor_buffer, current_line);
-    if (current_line_length == 0) {
-        current_line_length = 1;
-    }
+//    int64_t current_line = 0;
+//    int64_t current_line_length = editor_buffer_get_line_length(editor_buffer, current_line);
+//    if (current_line_length == 0) {
+//        current_line_length = 1;
+//    }
+//
+//    int64_t virtual_newlines_including_current_line = current_line_length / virtual_line_length;
+//    int64_t remainder = current_line_length % virtual_line_length;
+//    if (remainder != 0) {
+//        virtual_newlines_including_current_line += 1;
+//    }
+//
+//    int64_t virtual_newlines_before_current_line = 0;
+//    int64_t total_lines = editor_buffer_get_line_count(editor_buffer);
+//
+//    while (virtual_newlines_including_current_line - 1 < line && current_line + 1 < total_lines) {
+//        virtual_newlines_before_current_line = virtual_newlines_including_current_line;
+//
+//        current_line += 1;
+//
+//        current_line_length = editor_buffer_get_line_length(editor_buffer, current_line);
+//        if (current_line_length == 0) {
+//            // if this line is just an empty newline on its own, we still need to count it as a line.
+//            current_line_length = 1;
+//        }
+//
+//        virtual_newlines_including_current_line += current_line_length / virtual_line_length;
+//        remainder = current_line_length % virtual_line_length;
+//        if (remainder != 0) {
+//            virtual_newlines_including_current_line += 1;
+//        }
+//    }
 
-    int64_t virtual_newlines_including_current_line = current_line_length / virtual_line_length;
-    int64_t remainder = current_line_length % virtual_line_length;
-    if (remainder != 0) {
-        virtual_newlines_including_current_line += 1;
-    }
+    int64_t current_line = line_rope_char_at_virtual_newline(editor_buffer.current_screen->lines, line);
+    int64_t current_line_length = editor_buffer_get_line_length(editor_buffer, current_line);
 
     int64_t virtual_newlines_before_current_line = 0;
-    int64_t total_lines = editor_buffer_get_line_count(editor_buffer);
-
-    while (virtual_newlines_including_current_line - 1 < line && current_line + 1 < total_lines) {
-        virtual_newlines_before_current_line = virtual_newlines_including_current_line;
-
-        current_line += 1;
-
-        current_line_length = editor_buffer_get_line_length(editor_buffer, current_line);
-        if (current_line_length == 0) {
-            // if this line is just an empty newline on its own, we still need to count it as a line.
-            current_line_length = 1;
-        }
-
-        virtual_newlines_including_current_line += current_line_length / virtual_line_length;
-        remainder = current_line_length % virtual_line_length;
-        if (remainder != 0) {
-            virtual_newlines_including_current_line += 1;
-        }
+    if (current_line > 0) {
+        virtual_newlines_before_current_line = virtual_newline_total(editor_buffer.current_screen->lines, current_line - 1);
     }
 
     int64_t char_pos = rope_char_number_at_line(editor_buffer.current_screen->text, current_line);
@@ -412,9 +509,6 @@ editor_buffer_get_line_length(struct editor_buffer_t editor_buffer, int64_t line
     struct line_rope_t *found_line = line_rope_char_at(editor_buffer.current_screen->lines, line);
     int64_t found_line_length = found_line == NULL ? -1 : found_line->line_length;
 
-//    int64_t old = editor_screen_calculate_line_length(*editor_buffer.current_screen, line);
-//    SE_ASSERT(old == found_line_length);
-
     return found_line_length;
 }
 
@@ -433,28 +527,30 @@ editor_buffer_get_line_length_virtual(struct editor_buffer_t editor_buffer, int6
 int64_t
 editor_buffer_get_line_count_virtual(struct editor_buffer_t editor_buffer, int64_t virtual_line_length)
 {
-    int64_t virtual_line_count = 0;
-    int64_t lines = editor_buffer_get_line_count(editor_buffer);
-    for (int64_t line = 0; line < lines; line++) {
-        int64_t line_length = editor_buffer_get_line_length(editor_buffer, line);
+//    int64_t virtual_line_count = 0;
+//    int64_t lines = editor_buffer_get_line_count(editor_buffer);
+//    for (int64_t line = 0; line < lines; line++) {
+//        int64_t line_length = editor_buffer_get_line_length(editor_buffer, line);
+//
+//        if (line_length == 0) {
+//            virtual_line_count += 1;
+//        } else {
+//            virtual_line_count += line_length / virtual_line_length;
+//
+//            if (line == lines - 1 && line_length % virtual_line_length == 0) {
+//                virtual_line_count += 1;
+//            } else {
+//                int64_t remainder = line_length % virtual_line_length;
+//                if (remainder != 0) {
+//                    virtual_line_count += 1;
+//                }
+//            }
+//        }
+//    }
+//
+//    return virtual_line_count;
 
-        if (line_length == 0) {
-            virtual_line_count += 1;
-        } else {
-            virtual_line_count += line_length / virtual_line_length;
-
-            if (line == lines - 1 && line_length % virtual_line_length == 0) {
-                virtual_line_count += 1;
-            } else {
-                int64_t remainder = line_length % virtual_line_length;
-                if (remainder != 0) {
-                    virtual_line_count += 1;
-                }
-            }
-        }
-    }
-
-    return virtual_line_count;
+    return editor_buffer.current_screen->lines->total_virtual_newline_count;
 }
 
 int64_t
@@ -571,43 +667,48 @@ editor_buffer_get_virtual_cursor_row_for_point(struct editor_buffer_t editor_buf
                                                int64_t col,
                                                int64_t virtual_line_length)
 {
-    int64_t current_line_length = editor_buffer_get_line_length(editor_buffer, 0);
-    if (current_line_length == 0) {
-        current_line_length = 1;
-    }
+//    int64_t current_line_length = editor_buffer_get_line_length(editor_buffer, 0);
+//    if (current_line_length == 0) {
+//        current_line_length = 1;
+//    }
+//
+//    int64_t virtual_newlines_including_current_line = current_line_length / virtual_line_length;
+//    int64_t remainder = current_line_length % virtual_line_length;
+//    if (remainder != 0) {
+//        virtual_newlines_including_current_line += 1;
+//    }
+//
+//    int64_t virtual_newlines_before_current_line = 0;
+//
+//    for (int64_t current_line = 1; current_line <= row; current_line++) {
+//        virtual_newlines_before_current_line = virtual_newlines_including_current_line;
+//
+//        current_line_length = editor_buffer_get_line_length(editor_buffer, current_line);
+//        if (current_line_length == 0) {
+//            current_line_length = 1;
+//        }
+//
+//        virtual_newlines_including_current_line += current_line_length / virtual_line_length;
+//        remainder = current_line_length % virtual_line_length;
+//        if (remainder != 0) {
+//            virtual_newlines_including_current_line += 1;
+//        }
+//    }
 
-    int64_t virtual_newlines_including_current_line = current_line_length / virtual_line_length;
-    int64_t remainder = current_line_length % virtual_line_length;
-    if (remainder != 0) {
-        virtual_newlines_including_current_line += 1;
-    }
-
-    int64_t virtual_newlines_before_current_line = 0;
-
-    for (int64_t current_line = 1; current_line <= row; current_line++) {
-        virtual_newlines_before_current_line = virtual_newlines_including_current_line;
-
-        current_line_length = editor_buffer_get_line_length(editor_buffer, current_line);
-        if (current_line_length == 0) {
-            current_line_length = 1;
-        }
-
-        virtual_newlines_including_current_line += current_line_length / virtual_line_length;
-        remainder = current_line_length % virtual_line_length;
-        if (remainder != 0) {
-            virtual_newlines_including_current_line += 1;
-        }
+    int64_t virtual_newlines_before_current_line;
+    if (row > 0) {
+        virtual_newlines_before_current_line = virtual_newline_total(editor_buffer.current_screen->lines, row - 1);
+    } else {
+        virtual_newlines_before_current_line = 0;
     }
 
     int64_t extra_from_cols;
     extra_from_cols = col / virtual_line_length;
 
-    int32_t last_line = editor_buffer_get_line_count(editor_buffer) == row + 1;
-    if (!last_line
-        && col == current_line_length
-        && col % virtual_line_length == 0) {
-        extra_from_cols -= 1;
-    }
+//    int32_t last_line = editor_buffer_get_line_count(editor_buffer) == row + 1;
+//    if (!last_line) {
+//        extra_from_cols -= 1;
+//    }
 
     return virtual_newlines_before_current_line + extra_from_cols;
 }

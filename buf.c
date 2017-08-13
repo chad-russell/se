@@ -471,21 +471,14 @@ buf_write_line_rope_helper(struct buf_t *buf, struct line_rope_t *line_rope, int
         return;
     }
 
-    if (line_rope->is_leaf) {
-        buf_write_fmt(buf, "%r_char{line_length: %i64, char_weight: %i64, total_char_weight: %i64}[rc:%i32]\n",
-                      indent, ' ',
-                      line_rope->line_length,
-                      line_rope->char_weight,
-                      line_rope->total_char_weight,
-                      line_rope->rc);
-    } else {
-        buf_write_fmt(buf, "%r_char{line_length: %i64, char_weight: %i64, total_char_weight: %i64}[rc:%i32]\n",
-                      indent, ' ',
-                      line_rope->line_length,
-                      line_rope->char_weight,
-                      line_rope->total_char_weight,
-                      line_rope->rc);
+    buf_write_fmt(buf, "%r_char{line_length: %i64, virtual_newline_count: %i64, total_virtual_newline_count: %i64}[rc:%i32]\n",
+                  indent, ' ',
+                  line_rope->line_length,
+                  line_rope->virtual_newline_count,
+                  line_rope->total_virtual_newline_count,
+                  line_rope->rc);
 
+    if (!line_rope->is_leaf) {
         buf_write_line_rope_helper(buf, line_rope->left, indent + 2);
         buf_write_line_rope_helper(buf, line_rope->right, indent + 2);
     }

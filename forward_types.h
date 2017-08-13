@@ -41,7 +41,7 @@ struct line_rope_t {
     int64_t virtual_newline_count;
     int64_t total_virtual_newline_count;
 
-    int32_t height;
+    int64_t height;
 
     int8_t is_leaf;
 

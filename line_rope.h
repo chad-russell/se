@@ -37,16 +37,22 @@ int64_t
 line_rope_total_char_weight(struct line_rope_t *rn);
 
 int64_t
-line_rope_total_line_break_length(struct line_rope_t *rn);
+line_rope_height(struct line_rope_t *rn);
 
 int64_t
-line_rope_total_line_break_weight(struct line_rope_t *rn);
+line_rope_total_virtual_newline_length(struct line_rope_t *rn);
+
+int64_t
+line_rope_total_virtual_newline_weight(struct line_rope_t *rn);
 
 struct line_rope_t *
 line_rope_insert(struct line_rope_t *rn, int64_t i, int64_t line_length);
 
 struct line_rope_t *
 line_rope_delete(struct line_rope_t *rn, int64_t start, int64_t end);
+
+struct line_rope_t *
+line_rope_balance(struct line_rope_t *rn);
 
 void
 line_rope_inc_rc(struct line_rope_t *rn);
