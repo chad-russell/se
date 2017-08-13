@@ -122,6 +122,13 @@ buf_write_vector_deref(struct buf_t *buf, const char *elem_fmt, struct vector_t 
 void
 buf_write_vector_deref_va(struct buf_t *buf, va_list list);
 
+// write_editor_buffer
+void
+buf_write_editor_buffer(struct buf_t *buf, struct editor_buffer_t *buffer);
+
+void
+buf_write_editor_buffer_va(struct buf_t *buf, va_list list);
+
 // write_rope
 void
 buf_write_rope(struct buf_t *buf, struct rope_t *rn);
@@ -135,5 +142,9 @@ buf_write_rope_debug(struct buf_t *buf, struct rope_t *rn);
 
 void
 buf_write_rope_debug_va(struct buf_t *buf, va_list list);
+
+// write line_rope
+void
+buf_write_line_rope_va(struct buf_t *buf, va_list list);
 
 #endif //SWL_BUF_H

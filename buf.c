@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "buf.h"
+#include "editor_buffer.h"
 
 // init
 struct buf_t *
@@ -134,6 +135,9 @@ buf_write_fmt_specifier(struct buf_t *buf, const char *src, va_list list)
     if (buf_write_fmt_specifier_helper(buf, src, "str", buf_write_str_va, list)) {
         return (int32_t) strlen("str");
     }
+    if (buf_write_fmt_specifier_helper(buf, src, "editor_buffer", buf_write_editor_buffer_va, list)) {
+        return (int32_t) strlen("editor_buffer");
+    }
     if (buf_write_fmt_specifier_helper(buf, src, "char", buf_write_char_va, list)) {
         return (int32_t) strlen("char");
     }
@@ -157,6 +161,9 @@ buf_write_fmt_specifier(struct buf_t *buf, const char *src, va_list list)
     }
     if (buf_write_fmt_specifier_helper(buf, src, "rope", buf_write_rope_va, list)) {
         return (int32_t) strlen("rope");
+    }
+    if (buf_write_fmt_specifier_helper(buf, src, "line_rope", buf_write_line_rope_va, list)) {
+        return (int32_t) strlen("line_rope");
     }
 
     SE_PANIC("unknown specifier");
@@ -373,6 +380,26 @@ buf_write_vector_deref_va(struct buf_t *buf, va_list list)
     buf_write_vector_deref(buf, va_arg(list, const char *), va_arg(list, struct vector_t *), va_arg(list, const char *));
 }
 
+// write_editor_buffer
+void
+buf_write_editor_buffer(struct buf_t *buf, struct editor_buffer_t *buffer)
+{
+    if (buffer == NULL) { return; }
+
+    int64_t buf_length = editor_buffer_get_char_count(*buffer);
+    struct buf_t *all_text = editor_buffer_get_text_between_characters(*buffer, 0, buf_length);
+
+    buf_write_str(buf, all_text->bytes);
+
+    buf_free(all_text);
+}
+
+void
+buf_write_editor_buffer_va(struct buf_t *buf, va_list list)
+{
+    buf_write_editor_buffer(buf, va_arg(list, struct editor_buffer_t *));
+}
+
 // write_rope
 void
 buf_write_rope(struct buf_t *buf, struct rope_t *rn)
@@ -381,7 +408,7 @@ buf_write_rope(struct buf_t *buf, struct rope_t *rn)
         return;
     }
 
-    if (rn->flags & ROPE_LEAF) {
+    if (rn->is_leaf) {
         buf_write_bytes(buf, rn->str_buf->bytes, rn->byte_weight);
         return;
     }
@@ -405,7 +432,7 @@ buf_write_rope_debug_helper(struct buf_t *buf, struct rope_t *rn, int32_t indent
         return;
     }
 
-    if (rn->flags & ROPE_LEAF) {
+    if (rn->is_leaf) {
         buf_write_fmt(buf, "%r_char{byte_weight: %i64, char_weight: %i64}[rc:%i32] %bytes_e\n",
                       indent, ' ',
                       rn->byte_weight,
@@ -419,8 +446,8 @@ buf_write_rope_debug_helper(struct buf_t *buf, struct rope_t *rn, int32_t indent
                       rn->char_weight,
                       rn->rc);
 
-        buf_write_rope_debug_helper(buf, rn->left, indent+ 2);
-        buf_write_rope_debug_helper(buf, rn->right, indent+ 2);
+        buf_write_rope_debug_helper(buf, rn->left, indent + 2);
+        buf_write_rope_debug_helper(buf, rn->right, indent + 2);
     }
 }
 
@@ -434,5 +461,45 @@ void
 buf_write_rope_debug_va(struct buf_t *buf, va_list list)
 {
     buf_write_rope_debug(buf, va_arg(list, struct rope_t *));
+}
+
+void
+buf_write_line_rope_helper(struct buf_t *buf, struct line_rope_t *line_rope, int64_t indent)
+{
+    if (line_rope == NULL) {
+        buf_write_fmt(buf, "%r_char{NULL}\n", indent, ' ');
+        return;
+    }
+
+    if (line_rope->is_leaf) {
+        buf_write_fmt(buf, "%r_char{line_length: %i64, char_weight: %i64, total_char_weight: %i64}[rc:%i32]\n",
+                      indent, ' ',
+                      line_rope->line_length,
+                      line_rope->char_weight,
+                      line_rope->total_char_weight,
+                      line_rope->rc);
+    } else {
+        buf_write_fmt(buf, "%r_char{line_length: %i64, char_weight: %i64, total_char_weight: %i64}[rc:%i32]\n",
+                      indent, ' ',
+                      line_rope->line_length,
+                      line_rope->char_weight,
+                      line_rope->total_char_weight,
+                      line_rope->rc);
+
+        buf_write_line_rope_helper(buf, line_rope->left, indent + 2);
+        buf_write_line_rope_helper(buf, line_rope->right, indent + 2);
+    }
+}
+
+void
+buf_write_line_rope(struct buf_t *buf, struct line_rope_t *line_rope)
+{
+    buf_write_line_rope_helper(buf, line_rope, 0);
+}
+
+void
+buf_write_line_rope_va(struct buf_t *buf, va_list list)
+{
+    buf_write_line_rope(buf, va_arg(list, struct line_rope_t *));
 }
 

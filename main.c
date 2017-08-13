@@ -1,26 +1,21 @@
 
-
 #include "forward_types.h"
-#include "editor_buffer.h"
-#include "util.h"
+#include "line_rope.h"
 #include "buf.h"
-
-void
-test_scratch(struct editor_buffer_t editor_buffer)
-{
-    for (int32_t i = 0; i < 10; i++) {
-        editor_buffer_insert(editor_buffer, "a");
-    }
-
-    buf_print_fmt("line 0 length: %i64", editor_buffer_get_line_length(editor_buffer, 0));
-
-    SE_ASSERT(1);
-}
+#include "editor_buffer.h"
 
 int
 main()
 {
-    struct editor_buffer_t editor_buffer = editor_buffer_create();
-    test_scratch(editor_buffer);
+    struct editor_buffer_t buffer = editor_buffer_create();
+    editor_buffer_open_file(buffer, "/Users/chadrussell/Desktop/shakespeare.txt");
+
+    for (int i = 0; i < 100; i++) {
+        struct buf_t *lines = editor_buffer_get_text_between_points_virtual(buffer, i, 0, i + 1, 0, 10);
+//        struct buf_t *lines = editor_buffer_get_text_between_points(buffer, i, 0, i + 1, 0);
+        buf_print_fmt("%str\n", lines->bytes);
+        buf_free(lines);
+    }
+
     return 0;
 }

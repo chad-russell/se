@@ -6,13 +6,14 @@
 #include "util.h"
 #include "buf.h"
 #include "circular_buffer.h"
+#include "line_rope.h"
 
-#define SPLIT_THRESHOLD 4096
+#define SPLIT_THRESHOLD 1024
 #define COPY_THRESHOLD 1024
 
 // forward declarations
 struct rope_t *
-rope_new(int16_t flags, int64_t byte_weight, int64_t char_weight);
+rope_new(int8_t is_leaf, int64_t byte_weight, int64_t char_weight);
 
 int64_t
 rope_byte_weight(struct rope_t *rn);
@@ -47,8 +48,13 @@ rope_parent_init(struct rope_t *left, struct rope_t *right)
     rope_set_right(rn, right);
 
     rn->byte_weight = rope_byte_weight(rn);
+    rn->total_byte_weight = rope_total_byte_weight(rn);
+
     rn->char_weight = rope_char_weight(rn);
+    rn->total_char_weight = rope_total_char_weight(rn);
+
     rn->line_break_weight = rope_line_break_weight(rn);
+    rn->total_line_break_weight = rope_total_line_break_weight(rn);
 
     return rn;
 }
@@ -70,9 +76,10 @@ rope_leaf_init_length(const char *text, int64_t byte_length, int64_t char_length
         struct rope_t *right = rope_leaf_init_length(half_ptr, byte_length - first_half_byte_length, char_length - half);
         return rope_parent_init(left, right);
     } else {
-        struct rope_t *rn = rope_new(ROPE_LEAF, byte_length, char_length);
+        struct rope_t *rn = rope_new(1, byte_length, char_length);
         rn->str_buf = buf_init_fmt("%bytes", text, byte_length);
         rn->line_break_weight = count_newlines_length(text, byte_length);
+        rn->total_line_break_weight = rn->line_break_weight;
         return rn;
     }
 }
@@ -89,13 +96,17 @@ rope_set_right(struct rope_t *target, struct rope_t *new_right)
 {
     SE_ASSERT(target != NULL);
     SE_ASSERT(target != new_right);
-    SE_ASSERT(!(target->flags & ROPE_LEAF));
+    SE_ASSERT(!target->is_leaf);
 
     if (new_right == target->right) { return; }
 
     rope_dec_rc(target->right);
     target->right = new_right;
     rope_inc_rc(new_right);
+
+    rope_total_byte_weight(target);
+    rope_total_line_break_weight(target);
+    rope_total_char_weight(target);
 }
 
 void
@@ -103,7 +114,7 @@ rope_set_left(struct rope_t *target, struct rope_t *new_left)
 {
     SE_ASSERT(target != NULL);
     SE_ASSERT(target != new_left);
-    SE_ASSERT(!(target->flags & ROPE_LEAF));
+    SE_ASSERT(!target->is_leaf);
 
     if (new_left == target->left) { return; }
 
@@ -112,14 +123,19 @@ rope_set_left(struct rope_t *target, struct rope_t *new_left)
     rope_inc_rc(new_left);
 
     target->byte_weight = rope_byte_weight(target);
+    rope_total_byte_weight(target);
+
     target->char_weight = rope_char_weight(target);
+    rope_total_char_weight(target);
+
     target->line_break_weight = rope_line_break_weight(target);
+    rope_total_line_break_weight(target);
 }
 
 const char *
 rope_char_at(struct rope_t *rn, int64_t i)
 {
-    if (rn->flags & ROPE_LEAF) {
+    if (rn->is_leaf) {
         if (rn->char_weight - 1 < i) {
             return NULL;
         }
@@ -144,7 +160,7 @@ rope_char_at(struct rope_t *rn, int64_t i)
 int64_t
 rope_char_number_at_line(struct rope_t *rn, int64_t i)
 {
-    if (rn->flags & ROPE_LEAF) {
+    if (rn->is_leaf) {
         if (rn->line_break_weight < i) {
             return rn->char_weight + 1;
         }
@@ -179,7 +195,7 @@ rope_char_number_at_line(struct rope_t *rn, int64_t i)
 const char *
 rope_byte_at(struct rope_t *rn, int64_t i)
 {
-    if (rn->flags & ROPE_LEAF) {
+    if (rn->is_leaf) {
         if (rn->byte_weight - 1 < i) {
             return NULL;
         }
@@ -199,15 +215,28 @@ rope_byte_at(struct rope_t *rn, int64_t i)
 int64_t
 rope_total_char_length(struct rope_t *rn)
 {
-    if (rn == NULL) {
-        return 0;
+    if (rn == NULL) { return 0; }
+
+    return rn->total_char_weight;
+}
+
+int64_t
+rope_total_char_weight(struct rope_t *rn)
+{
+    if (rn == NULL) { return 0; }
+
+    if (rn->left != NULL && rn->right != NULL) {
+        rn->total_char_weight = rn->left->total_char_weight + rn->right->total_char_weight;
+    }
+    else if (rn->left != NULL) {
+        rn->total_char_weight = rn->left->total_char_weight;
+    } else if (rn->right != NULL) {
+        rn->total_char_weight = rn->right->total_char_weight;
+    } else {
+        rn->total_char_weight = 0;
     }
 
-    if (rn->flags & ROPE_LEAF) {
-        return rn->char_weight;
-    }
-
-    return rope_total_char_length(rn->left) + rope_total_char_length(rn->right);
+    return rn->total_char_weight;
 }
 
 int64_t
@@ -217,17 +246,32 @@ rope_total_line_break_length(struct rope_t *rn)
         return 0;
     }
 
-    if (rn->flags & ROPE_LEAF) {
-        return rn->line_break_weight;
+    return rn->total_line_break_weight;
+}
+
+int64_t
+rope_total_line_break_weight(struct rope_t *rn)
+{
+    if (rn == NULL) { return 0; }
+
+    if (rn->left != NULL && rn->right != NULL) {
+        rn->total_line_break_weight = rn->left->total_line_break_weight + rn->right->total_line_break_weight;
+    }
+    else if (rn->left != NULL) {
+        rn->total_line_break_weight = rn->left->total_line_break_weight;
+    } else if (rn->right != NULL) {
+        rn->total_line_break_weight = rn->right->total_line_break_weight;
+    } else {
+        rn->total_line_break_weight = 0;
     }
 
-    return rope_total_line_break_length(rn->left) + rope_total_line_break_length(rn->right);
+    return rn->total_line_break_weight;
 }
 
 int64_t
 rope_get_line_number_for_char_pos(struct rope_t *rn, int64_t char_pos)
 {
-    if (rn->flags & ROPE_LEAF) {
+    if (rn->is_leaf) {
         if (rn->char_weight < char_pos) {
             return 0;
         }
@@ -301,7 +345,7 @@ rope_free(struct rope_t *rn)
     if (rn->rc > 0) { return; }
     SE_ASSERT(rn->rc == 0);
 
-    if (!(rn->flags & ROPE_LEAF)) {
+    if (!rn->is_leaf) {
         rope_dec_rc(rn->left);
         rope_dec_rc(rn->right);
     }
@@ -318,7 +362,8 @@ undo_stack_append(struct editor_buffer_t editor_buffer, struct editor_screen_t s
     if (*editor_buffer.undo_idx + 1 < editor_buffer.undo_buffer->length) {
         for (int64_t i = *editor_buffer.undo_idx + 1; i < editor_buffer.undo_buffer->length; i++) {
             struct editor_screen_t *truncated_screen = circular_buffer_at(editor_buffer.undo_buffer, i);
-            rope_dec_rc(truncated_screen->rn);
+            rope_dec_rc(truncated_screen->text);
+            line_rope_dec_rc(truncated_screen->lines);
 
             // nullify this so that next time we come to it we don't try to free garbage rope data
             circular_buffer_set_index_null(editor_buffer.undo_buffer, i);
@@ -329,20 +374,20 @@ undo_stack_append(struct editor_buffer_t editor_buffer, struct editor_screen_t s
     // if we are overwriting something, free it first
     struct editor_screen_t *screen_to_overwrite = circular_buffer_next(editor_buffer.undo_buffer);
     if (screen_to_overwrite != NULL) {
-        rope_dec_rc(screen_to_overwrite->rn);
+        rope_dec_rc(screen_to_overwrite->text);
+        line_rope_dec_rc(screen_to_overwrite->lines);
 
-//        if (screen_to_overwrite->line_lengths != NULL) {
-//            vector_free(screen_to_overwrite->line_lengths);
-//        }
+        se_free(screen_to_overwrite->cursor_info);
 
         // nullify this so that the next time we come to it we don't try to free garbage rope data
         circular_buffer_set_next_write_index_null(editor_buffer.undo_buffer);
     }
 
-    rope_inc_rc(screen.rn);
+    rope_inc_rc(screen.text);
+    line_rope_inc_rc(screen.lines);
 
     circular_buffer_append(editor_buffer.undo_buffer, &screen);
-    *editor_buffer.undo_idx = editor_buffer.undo_buffer->length;
+    *editor_buffer.undo_idx = editor_buffer.undo_buffer->length - 1;
 
     global_only_undo_stack_append(editor_buffer, screen);
 }
@@ -352,16 +397,18 @@ global_only_undo_stack_append(struct editor_buffer_t editor_buffer, struct edito
 {
     struct editor_screen_t *screen_to_overwrite = circular_buffer_next(editor_buffer.global_undo_buffer);
     if (screen_to_overwrite != NULL) {
-        rope_dec_rc(screen_to_overwrite->rn);
+        rope_dec_rc(screen_to_overwrite->text);
+        line_rope_dec_rc(screen_to_overwrite->lines);
 
         // nullify this so that the next time we come to it we don't try to free garbage rope data
         circular_buffer_set_next_write_index_null(editor_buffer.global_undo_buffer);
     }
 
-    rope_inc_rc(screen.rn);
+    rope_inc_rc(screen.text);
+    line_rope_inc_rc(screen.lines);
 
     circular_buffer_append(editor_buffer.global_undo_buffer, &screen);
-    *editor_buffer.global_undo_idx = editor_buffer.global_undo_buffer->length;
+    *editor_buffer.global_undo_idx = editor_buffer.global_undo_buffer->length - 1;
 
     *editor_buffer.current_screen = screen;
 }
@@ -370,11 +417,12 @@ global_only_undo_stack_append(struct editor_buffer_t editor_buffer, struct edito
 struct rope_t *
 rope_leaf_init_concat(struct rope_t *left, struct rope_t *right)
 {
-    struct rope_t *rn = rope_new(ROPE_LEAF,
+    struct rope_t *rn = rope_new(1,
                                  left->byte_weight + right->byte_weight,
                                  left->char_weight + right->char_weight);
     rn->str_buf = buf_init_fmt("%str%str", left->str_buf->bytes, right->str_buf->bytes);
-    rn->line_break_weight = rope_line_break_weight(rn);
+    rn->line_break_weight = count_newlines(rn->str_buf->bytes);
+    rn->total_line_break_weight = rn->line_break_weight;
 
     rope_free(left);
     rope_free(right);
@@ -391,7 +439,7 @@ rope_shallow_copy(struct rope_t *rn)
 
     copy->rc = 0;
 
-    if (!(rn->flags & ROPE_LEAF)) {
+    if (!rn->is_leaf) {
         rope_inc_rc(rn->left);
         rope_inc_rc(rn->right);
     } else {
@@ -403,14 +451,16 @@ rope_shallow_copy(struct rope_t *rn)
 }
 
 struct rope_t *
-rope_new(int16_t flags, int64_t byte_weight, int64_t char_weight)
+rope_new(int8_t is_leaf, int64_t byte_weight, int64_t char_weight)
 {
     struct rope_t *rn = se_alloc(1, sizeof(struct rope_t));
 
     rn->rc = 0;
-    rn->flags = flags;
+    rn->is_leaf = is_leaf;
     rn->byte_weight = byte_weight;
     rn->char_weight = char_weight;
+    rn->total_char_weight = char_weight;
+    rn->total_byte_weight = byte_weight;
 
     return rn;
 }
@@ -418,15 +468,28 @@ rope_new(int16_t flags, int64_t byte_weight, int64_t char_weight)
 int64_t
 rope_total_byte_length(struct rope_t *rn)
 {
-    if (rn == NULL) {
-        return 0;
+    if (rn == NULL) { return 0; }
+
+    return rn->total_byte_weight;
+}
+
+int64_t
+rope_total_byte_weight(struct rope_t *rn)
+{
+    if (rn == NULL) { return 0; }
+
+    if (rn->left != NULL && rn->right != NULL) {
+        rn->total_byte_weight = rn->left->total_byte_weight + rn->right->total_byte_weight;
+    }
+    else if (rn->left != NULL) {
+        rn->total_byte_weight = rn->left->total_byte_weight;
+    } else if (rn->right != NULL) {
+        rn->total_byte_weight = rn->right->total_byte_weight;
+    } else {
+        rn->total_byte_weight = 0;
     }
 
-    if (rn->flags & ROPE_LEAF) {
-        return rn->byte_weight;
-    }
-
-    return rope_total_byte_length(rn->left) + rope_total_byte_length(rn->right);
+    return rn->total_byte_weight;
 }
 
 int64_t
@@ -436,7 +499,7 @@ rope_byte_weight(struct rope_t *rn)
         return 0;
     }
 
-    if (rn->flags & ROPE_LEAF) {
+    if (rn->is_leaf) {
         return rn->byte_weight;
     }
 
@@ -450,7 +513,7 @@ rope_char_weight(struct rope_t *rn)
         return 0;
     }
 
-    if (rn->flags & ROPE_LEAF) {
+    if (rn->is_leaf) {
         return rn->char_weight;
     }
 
@@ -464,7 +527,7 @@ rope_line_break_weight(struct rope_t *rn)
         return 0;
     }
 
-    if (rn->flags & ROPE_LEAF) {
+    if (rn->is_leaf) {
         return count_newlines(rn->str_buf->bytes);
     }
 
@@ -521,7 +584,7 @@ rope_split_at_char(struct rope_t *rn, int64_t i,
                    struct rope_t **out_new_left,
                    struct rope_t **out_new_right)
 {
-    if (rn->flags & ROPE_LEAF) {
+    if (rn->is_leaf) {
         if (i <= 0) {
             *out_new_left = NULL;
             *out_new_right = rope_shallow_copy(rn);
@@ -560,8 +623,13 @@ rope_split_at_char(struct rope_t *rn, int64_t i,
             used_rn_copy = 1;
 
             (*out_new_left)->byte_weight = rope_byte_weight(*out_new_left);
+            (*out_new_left)->total_byte_weight = rope_total_byte_weight(*out_new_left);
+
             (*out_new_left)->char_weight = rope_char_weight(*out_new_left);
+            (*out_new_left)->total_char_weight = rope_total_char_weight(*out_new_left);
+
             (*out_new_left)->line_break_weight = rope_line_break_weight(*out_new_left);
+            (*out_new_left)->total_line_break_weight = rope_total_line_break_weight(*out_new_left);
         } else if (i > rn_copy->char_weight) {
             struct rope_t *new_gt_left;
             struct rope_t *new_gt_right;
@@ -593,8 +661,8 @@ rope_concat(struct rope_t *left, struct rope_t *right)
     if (left == NULL) {
         return right;
     }
-    if (right->flags & ROPE_LEAF) {
-        if (left->flags & ROPE_LEAF) {
+    if (right->is_leaf) {
+        if (left->is_leaf) {
             if (left->byte_weight + right->byte_weight < COPY_THRESHOLD) {
                 struct rope_t *cat = rope_leaf_init_concat(left, right);
                 return cat;
@@ -605,7 +673,7 @@ rope_concat(struct rope_t *left, struct rope_t *right)
             rope_set_right(cat, right);
             return cat;
         }
-        else if (left->right->flags & ROPE_LEAF
+        else if (left->right->is_leaf
                  && left->right->byte_weight + right->byte_weight < COPY_THRESHOLD) {
             struct rope_t *cat = rope_shallow_copy(left);
             rope_set_right(cat, rope_leaf_init_concat(left->right, right));

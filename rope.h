@@ -31,7 +31,16 @@ int64_t
 rope_total_char_length(struct rope_t *rn);
 
 int64_t
+rope_total_char_weight(struct rope_t *rn);
+
+int64_t
+rope_total_byte_weight(struct rope_t *rn);
+
+int64_t
 rope_total_line_break_length(struct rope_t *rn);
+
+int64_t
+rope_total_line_break_weight(struct rope_t *rn);
 
 int64_t
 rope_get_line_number_for_char_pos(struct rope_t *rn, int64_t char_pos);
@@ -52,6 +61,7 @@ rope_dec_rc(struct rope_t *rn);
 void
 rope_free(struct rope_t *rn);
 
+// undo stack
 void
 global_only_undo_stack_append(struct editor_buffer_t editor_buffer, struct editor_screen_t screen);
 

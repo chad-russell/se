@@ -37,7 +37,7 @@ int64_t
 editor_buffer_get_line_count(struct editor_buffer_t editor_buffer);
 
 int64_t
-editor_buffer_get_virtual_line_count(struct editor_buffer_t editor_buffer, int64_t virtual_line_length);
+editor_buffer_get_line_count_virtual(struct editor_buffer_t editor_buffer, int64_t virtual_line_length);
 
 int64_t
 editor_buffer_get_char_count(struct editor_buffer_t editor_buffer);
@@ -52,7 +52,7 @@ struct buf_t *
 editor_buffer_get_text_between_points(struct editor_buffer_t editor_buffer, int64_t start_line, int64_t start_col, int64_t end_line, int64_t end_col);
 
 struct buf_t *
-editor_buffer_get_text_between_virtual_points(struct editor_buffer_t editor_buffer, int64_t start_line,
+editor_buffer_get_text_between_points_virtual(struct editor_buffer_t editor_buffer, int64_t start_line,
                                               int64_t start_col, int64_t end_line, int64_t end_col,
                                               int64_t virtual_line_length);
 
@@ -98,13 +98,31 @@ editor_buffer_set_cursor_point(struct editor_buffer_t editor_buffer, int64_t row
 void
 editor_buffer_set_cursor_pos_relative(struct editor_buffer_t editor_buffer, int64_t relative_cursor);
 
+int64_t
+editor_buffer_get_cursor_selection_start_row_virtual(struct editor_buffer_t editor_buffer, int64_t virtual_line_length);
+
+int64_t
+editor_buffer_get_cursor_selection_start_col_virtual(struct editor_buffer_t editor_buffer, int64_t virtual_line_length);
+
+int64_t
+editor_buffer_cursor_is_selection(struct editor_buffer_t editor_buffer);
+
+void
+editor_buffer_set_cursor_is_selection(struct editor_buffer_t editor_buffer, int8_t cursor_is_selection);
+
+int64_t
+editor_buffer_get_cursor_selection_start_row(struct editor_buffer_t editor_buffer);
+
+int64_t
+editor_buffer_get_cursor_selection_start_col(struct editor_buffer_t editor_buffer);
+
+int64_t
+editor_buffer_get_cursor_selection_start_pos(struct editor_buffer_t editor_buffer);
+
 const char *
 editor_buffer_get_buf_bytes(struct buf_t *buf);
 
 void
 editor_buffer_free_buf(struct buf_t *buf);
-
-void
-editor_screen_set_line_and_col_for_char_pos(struct editor_screen_t *editor_screen);
 
 #endif //SE_EDITOR_BUFFER_H
