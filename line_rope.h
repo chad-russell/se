@@ -9,10 +9,10 @@
 
 // init
 struct line_rope_t *
-line_rope_parent_init(struct line_rope_t *left, struct line_rope_t *right);
+line_rope_parent_init(struct line_rope_t *left, struct line_rope_t *right, int32_t virtual_line_length);
 
 struct line_rope_t *
-line_rope_leaf_init(int64_t line_length);
+line_rope_leaf_init(int64_t line_length, int32_t virtual_line_length);
 
 // methods
 void

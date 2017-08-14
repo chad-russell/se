@@ -3,8 +3,8 @@
 
 #include "vector.h"
 
-#define UNDO_BUFFER_SIZE 100
-#define GLOBAL_UNDO_BUFFER_SIZE 100
+#define UNDO_BUFFER_SIZE 1000
+#define GLOBAL_UNDO_BUFFER_SIZE 10000
 
 struct rope_t {
     int64_t byte_weight;
@@ -38,10 +38,11 @@ struct line_rope_t {
     int64_t char_weight;
     int64_t total_char_weight;
 
+    int32_t virtual_line_length;
     int64_t virtual_newline_count;
     int64_t total_virtual_newline_count;
 
-    int64_t height;
+    int32_t height;
 
     int8_t is_leaf;
 

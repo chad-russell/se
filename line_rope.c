@@ -14,7 +14,7 @@
 
 // forward declarations
 struct line_rope_t *
-line_rope_new(int8_t is_leaf);
+line_rope_new(int8_t is_leaf, int32_t virtual_line_length);
 
 int64_t
 line_rope_line_length(struct line_rope_t *rn);
@@ -38,20 +38,21 @@ line_rope_total_line_length(struct line_rope_t *rn);
 
 // init
 struct line_rope_t *
-line_rope_new(int8_t is_leaf)
+line_rope_new(int8_t is_leaf, int32_t virtual_line_length)
 {
     struct line_rope_t *rn = se_alloc(1, sizeof(struct line_rope_t));
 
     rn->rc = 0;
     rn->is_leaf = is_leaf;
+    rn->virtual_line_length = virtual_line_length;
 
     return rn;
 }
 
 struct line_rope_t *
-line_rope_parent_init(struct line_rope_t *left, struct line_rope_t *right)
+line_rope_parent_init(struct line_rope_t *left, struct line_rope_t *right, int32_t virtual_line_length)
 {
-    struct line_rope_t *rn = line_rope_new(0);
+    struct line_rope_t *rn = line_rope_new(0, virtual_line_length);
 
     line_rope_set_left(rn, left);
     line_rope_set_right(rn, right);
@@ -71,9 +72,9 @@ line_rope_parent_init(struct line_rope_t *left, struct line_rope_t *right)
 }
 
 struct line_rope_t *
-line_rope_leaf_init(int64_t line_length)
+line_rope_leaf_init(int64_t line_length, int32_t virtual_line_length)
 {
-    struct line_rope_t *rn = line_rope_new(1);
+    struct line_rope_t *rn = line_rope_new(1, virtual_line_length);
 
     rn->line_length = line_length;
     rn->total_line_length = line_length;
@@ -161,7 +162,7 @@ line_rope_replace_char_at(struct line_rope_t *rn, int64_t i, int64_t new_line_le
             return NULL;
         }
 
-        struct line_rope_t *new_line = line_rope_leaf_init(new_line_length);
+        struct line_rope_t *new_line = line_rope_leaf_init(new_line_length, rn->virtual_line_length);
         return new_line;
     }
 
@@ -244,6 +245,10 @@ line_rope_total_virtual_newline_weight(struct line_rope_t *rn)
 {
     if (rn == NULL) { return 0; }
 
+    else if (rn->is_leaf) {
+        return rn->virtual_newline_count;
+    }
+
     if (rn->left != NULL && rn->right != NULL) {
         rn->total_virtual_newline_count = rn->left->total_virtual_newline_count + rn->right->total_virtual_newline_count;
     }
@@ -274,7 +279,7 @@ line_rope_balance_helper(struct line_rope_t *rn, struct vector_t *stack)
                 stack_pop(stack);
                 stack_pop(stack);
 
-                struct line_rope_t *new_line = line_rope_parent_init(second, top);
+                struct line_rope_t *new_line = line_rope_parent_init(second, top, rn->virtual_line_length);
                 stack_push(stack, &new_line);
             } else {
                 c = 1;
@@ -298,7 +303,7 @@ line_rope_balance(struct line_rope_t *rn)
         stack_pop(stack);
         stack_pop(stack);
 
-        struct line_rope_t *new_line = line_rope_parent_init(second, top);
+        struct line_rope_t *new_line = line_rope_parent_init(second, top, rn->virtual_line_length);
         stack_push(stack, &new_line);
     }
     SE_ASSERT(stack->length == 1);
@@ -316,7 +321,7 @@ line_rope_insert(struct line_rope_t *rn, int64_t i, int64_t line_length)
     struct line_rope_t *split_right;
     line_rope_split_at_char(rn, i, &split_left, &split_right);
 
-    struct line_rope_t *new_right = line_rope_leaf_init(line_length);
+    struct line_rope_t *new_right = line_rope_leaf_init(line_length, rn->virtual_line_length);
 
     struct line_rope_t *combined_left = line_rope_concat(split_left, new_right);
     struct line_rope_t *cat = line_rope_concat(combined_left, split_right);
@@ -328,7 +333,7 @@ struct line_rope_t *
 line_rope_delete(struct line_rope_t *rn, int64_t start, int64_t end)
 {
     if (line_rope_total_char_length(rn) == 1) {
-        return line_rope_leaf_init(1);
+        return line_rope_leaf_init(1, rn->virtual_line_length);
     }
 
     struct line_rope_t *split_end_left;
@@ -386,14 +391,6 @@ line_rope_shallow_copy(struct line_rope_t *rn)
 }
 
 int64_t
-line_rope_total_byte_length(struct line_rope_t *rn)
-{
-    if (rn == NULL) { return 0; }
-
-    return rn->total_line_length;
-}
-
-int64_t
 line_rope_total_line_length(struct line_rope_t *rn)
 {
     if (rn == NULL) { return 0; }
@@ -423,7 +420,7 @@ line_rope_line_length(struct line_rope_t *rn)
         return rn->line_length;
     }
 
-    return line_rope_total_byte_length(rn->left);
+    return line_rope_total_line_length(rn->left);
 }
 
 int64_t
@@ -448,18 +445,15 @@ line_rope_virtual_newline_weight(struct line_rope_t *rn)
     }
 
     if (rn->is_leaf) {
-        // todo(chad): cache this for more than just this one length!
-        int64_t virtual_line_length = 10;
-
         int64_t line_length = rn->line_length;
         int64_t virtual_line_count = 0;
 
         if (line_length == 0) {
             virtual_line_count += 1;
         } else {
-            virtual_line_count = line_length / virtual_line_length;
+            virtual_line_count = line_length / rn->virtual_line_length;
 
-            int64_t remainder = line_length % virtual_line_length;
+            int64_t remainder = line_length % rn->virtual_line_length;
             if (remainder != 0) {
                 virtual_line_count += 1;
             }
@@ -570,5 +564,5 @@ line_rope_concat(struct line_rope_t *left, struct line_rope_t *right)
         return cat;
     }
 
-    return line_rope_parent_init(left, right);
+    return line_rope_parent_init(left, right, left->virtual_line_length);
 }
