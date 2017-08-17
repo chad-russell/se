@@ -11,6 +11,15 @@ rope_parent_init(struct rope_t *left, struct rope_t *right);
 struct rope_t *
 rope_leaf_init(const char *text);
 
+struct rope_t *
+rope_leaf_init_lines(const char *text, struct line_helper_t *line_helper);
+
+struct rope_t *
+rope_shallow_copy(struct rope_t *rn);
+
+int64_t
+count_newlines(const char *str);
+
 // methods
 void
 rope_set_right(struct rope_t *target, struct rope_t *new_right);

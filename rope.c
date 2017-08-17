@@ -28,7 +28,7 @@ int64_t
 count_newlines(const char *str);
 
 int64_t
-count_newlines_length(const char *str, int64_t i);
+count_newlines_length(const char *str, int64_t i, struct line_helper_t *line_helper);
 
 void
 rope_split_at_char(struct rope_t *rn, int64_t i,
@@ -60,7 +60,7 @@ rope_parent_init(struct rope_t *left, struct rope_t *right)
 }
 
 struct rope_t *
-rope_leaf_init_length(const char *text, int64_t byte_length, int64_t char_length)
+rope_leaf_init_length(const char *text, int64_t byte_length, int64_t char_length, struct line_helper_t *line_helper)
 {
     if (char_length > SPLIT_THRESHOLD) {
         int64_t half = char_length / 2;
@@ -72,13 +72,13 @@ rope_leaf_init_length(const char *text, int64_t byte_length, int64_t char_length
 
         int64_t first_half_byte_length = (int64_t) (half_ptr - text);
 
-        struct rope_t *left = rope_leaf_init_length(text, first_half_byte_length, half);
-        struct rope_t *right = rope_leaf_init_length(half_ptr, byte_length - first_half_byte_length, char_length - half);
+        struct rope_t *left = rope_leaf_init_length(text, first_half_byte_length, half, line_helper);
+        struct rope_t *right = rope_leaf_init_length(half_ptr, byte_length - first_half_byte_length, char_length - half, line_helper);
         return rope_parent_init(left, right);
     } else {
         struct rope_t *rn = rope_new(1, byte_length, char_length);
         rn->str_buf = buf_init_fmt("%bytes", text, byte_length);
-        rn->line_break_weight = count_newlines_length(text, byte_length);
+        rn->line_break_weight = count_newlines_length(text, char_length, line_helper);
         rn->total_line_break_weight = rn->line_break_weight;
         return rn;
     }
@@ -87,7 +87,13 @@ rope_leaf_init_length(const char *text, int64_t byte_length, int64_t char_length
 struct rope_t *
 rope_leaf_init(const char *text)
 {
-    return rope_leaf_init_length(text, (int64_t) strlen(text), unicode_strlen(text));
+    return rope_leaf_init_length(text, (int64_t) strlen(text), unicode_strlen(text), NULL);
+}
+
+struct rope_t *
+rope_leaf_init_lines(const char *text, struct line_helper_t *line_helper)
+{
+    return rope_leaf_init_length(text, (int64_t) strlen(text), unicode_strlen(text), line_helper);
 }
 
 // methods
@@ -377,7 +383,12 @@ undo_stack_append(struct editor_buffer_t editor_buffer, struct editor_screen_t s
         rope_dec_rc(screen_to_overwrite->text);
         line_rope_dec_rc(screen_to_overwrite->lines);
 
-        se_free(screen_to_overwrite->cursor_info);
+        if (screen_to_overwrite->cursor_infos != NULL) {
+            for (int64_t cursor_idx = 0; cursor_idx < screen_to_overwrite->cursor_infos->length; cursor_idx++) {
+                se_free(vector_at(screen_to_overwrite->cursor_infos, cursor_idx));
+            }
+            vector_free(screen_to_overwrite->cursor_infos);
+        }
 
         // nullify this so that the next time we come to it we don't try to free garbage rope data
         circular_buffer_set_next_write_index_null(editor_buffer.undo_buffer);
@@ -546,14 +557,26 @@ count_newlines(const char *str)
 }
 
 int64_t
-count_newlines_length(const char *str, int64_t i)
+count_newlines_length(const char *str, int64_t i, struct line_helper_t *line_helper)
 {
     if (str == NULL) { return 0; }
     int64_t newline_count = 0;
 
-    int length = 0;
-    for (const char *c = str; *c != 0 && length < i; c++, length++) {
-        if (*c == '\n') { newline_count += 1; }
+    int64_t length = 0;
+
+    for (const char *c = str; *c != 0 && length < i; c += bytes_in_codepoint_utf8(*c), length++) {
+        if (*c == '\n') {
+            if (line_helper != NULL) {
+                int64_t line_length = line_helper->leftover + 1;
+                vector_append(line_helper->lines, &line_length);
+                line_helper->leftover = 0;
+            }
+            newline_count += 1;
+        }
+
+        if (line_helper != NULL) {
+            line_helper->leftover++;
+        }
     }
     return newline_count;
 }

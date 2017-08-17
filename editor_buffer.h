@@ -63,19 +63,19 @@ editor_buffer_get_text_between_points_virtual(struct editor_buffer_t editor_buff
                                               int32_t virtual_line_length);
 
 int64_t
-editor_buffer_get_cursor_pos(struct editor_buffer_t editor_buffer);
+editor_buffer_get_cursor_pos(struct editor_buffer_t editor_buffer, int64_t cursor_idx);
 
 int64_t
-editor_buffer_get_cursor_row(struct editor_buffer_t editor_buffer);
+editor_buffer_get_cursor_row(struct editor_buffer_t editor_buffer, int64_t cursor_idx);
 
 int64_t
-editor_buffer_get_cursor_col(struct editor_buffer_t editor_buffer);
+editor_buffer_get_cursor_col(struct editor_buffer_t editor_buffer, int64_t cursor_idx);
 
 int64_t
-editor_buffer_get_cursor_row_virtual(struct editor_buffer_t editor_buffer, int32_t virtual_line_length);
+editor_buffer_get_cursor_row_virtual(struct editor_buffer_t editor_buffer, int64_t cursor_idx, int32_t virtual_line_length);
 
 int64_t
-editor_buffer_get_cursor_col_virtual(struct editor_buffer_t editor_buffer, int32_t virtual_line_length);
+editor_buffer_get_cursor_col_virtual(struct editor_buffer_t editor_buffer, int64_t cursor_idx, int32_t virtual_line_length);
 
 void
 editor_buffer_set_cursor_point_virtual(struct editor_buffer_t editor_buffer, int64_t row, int64_t col, int32_t virtual_line_length);
@@ -92,8 +92,14 @@ editor_buffer_get_undo_index(struct editor_buffer_t editor_buffer);
 int64_t
 editor_buffer_get_global_undo_index(struct editor_buffer_t editor_buffer);
 
+int64_t
+editor_buffer_get_cursor_count(struct editor_buffer_t editor_buffer);
+
 void
 editor_buffer_set_cursor_pos(struct editor_buffer_t editor_buffer, int64_t cursor);
+
+void
+editor_buffer_set_cursor_pos_for_cursor_index(struct editor_buffer_t editor_buffer, int64_t cursor_idx, int64_t cursor);
 
 int64_t
 editor_buffer_get_end_of_row(struct editor_buffer_t editor_buffer, int64_t row);
@@ -102,28 +108,49 @@ void
 editor_buffer_set_cursor_point(struct editor_buffer_t editor_buffer, int64_t row, int64_t col);
 
 void
+editor_buffer_set_cursor_point_to_start_of_line(struct editor_buffer_t editor_buffer);
+
+void
+editor_buffer_set_cursor_point_to_end_of_line(struct editor_buffer_t editor_buffer);
+
+void
+editor_buffer_set_cursor_point_to_start_of_line_virtual(struct editor_buffer_t editor_buffer, int32_t virtual_line_length);
+
+void
+editor_buffer_set_cursor_point_to_end_of_line_virtual(struct editor_buffer_t editor_buffer, int32_t virtual_line_length);
+
+void
+editor_buffer_add_cursor_at_point(struct editor_buffer_t editor_buffer, int64_t row, int64_t col);
+
+void
+editor_buffer_add_cursor_at_point_virtual(struct editor_buffer_t editor_buffer, int64_t row, int64_t col, int32_t virtual_line_length);
+
+void
+editor_buffer_clear_cursors(struct editor_buffer_t editor_buffer);
+
+void
 editor_buffer_set_cursor_pos_relative(struct editor_buffer_t editor_buffer, int64_t relative_cursor);
 
 int64_t
-editor_buffer_get_cursor_selection_start_row_virtual(struct editor_buffer_t editor_buffer, int32_t virtual_line_length);
+editor_buffer_get_cursor_selection_start_row_virtual(struct editor_buffer_t editor_buffer, int64_t cursor_idx, int32_t virtual_line_length);
 
 int64_t
-editor_buffer_get_cursor_selection_start_col_virtual(struct editor_buffer_t editor_buffer, int32_t virtual_line_length);
+editor_buffer_get_cursor_selection_start_col_virtual(struct editor_buffer_t editor_buffer, int64_t cursor_idx, int32_t virtual_line_length);
 
 int64_t
-editor_buffer_cursor_is_selection(struct editor_buffer_t editor_buffer);
+editor_buffer_cursor_is_selection(struct editor_buffer_t editor_buffer, int64_t cursor_idx);
 
 void
 editor_buffer_set_cursor_is_selection(struct editor_buffer_t editor_buffer, int8_t cursor_is_selection);
 
 int64_t
-editor_buffer_get_cursor_selection_start_row(struct editor_buffer_t editor_buffer);
+editor_buffer_get_cursor_selection_start_row(struct editor_buffer_t editor_buffer, int64_t cursor_idx);
 
 int64_t
-editor_buffer_get_cursor_selection_start_col(struct editor_buffer_t editor_buffer);
+editor_buffer_get_cursor_selection_start_col(struct editor_buffer_t editor_buffer, int64_t cursor_idx);
 
 int64_t
-editor_buffer_get_cursor_selection_start_pos(struct editor_buffer_t editor_buffer);
+editor_buffer_get_cursor_selection_start_pos(struct editor_buffer_t editor_buffer, int64_t cursor_idx);
 
 const char *
 editor_buffer_get_buf_bytes(struct buf_t *buf);

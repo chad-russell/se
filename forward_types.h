@@ -58,13 +58,13 @@ struct cursor_info_t {
     int64_t col;
 
     int8_t is_selection;
-    int64_t selection_start_char_pos;
-    int64_t selection_start_row;
-    int64_t selection_start_col;
+    int64_t selection_char_pos;
+    int64_t selection_row;
+    int64_t selection_col;
 };
 
 struct editor_screen_t {
-    struct cursor_info_t *cursor_info;
+    struct vector_t *cursor_infos; // vector of 'struct cursor_info_t'
     struct rope_t *text;
     struct line_rope_t *lines;
 };
@@ -79,6 +79,11 @@ struct editor_buffer_t {
     int64_t *global_undo_idx;
 
     struct editor_screen_t *current_screen;
+};
+
+struct line_helper_t {
+    struct vector_t *lines;
+    int64_t leftover;
 };
 
 #endif //SE_ALL_TYPES_H

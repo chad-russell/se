@@ -167,10 +167,13 @@ line_rope_replace_char_at(struct line_rope_t *rn, int64_t i, int64_t new_line_le
     }
 
     if (rn->char_weight - 1 < i) {
-        struct line_rope_t *new_right = line_rope_replace_char_at(rn->right, i - rn->char_weight, new_line_length);
-        struct line_rope_t *copy = line_rope_shallow_copy(rn);
-        line_rope_set_right(copy, new_right);
-        return copy;
+        if (rn->right != NULL) {
+            struct line_rope_t *new_right = line_rope_replace_char_at(rn->right, i - rn->char_weight, new_line_length);
+            struct line_rope_t *copy = line_rope_shallow_copy(rn);
+            line_rope_set_right(copy, new_right);
+            return copy;
+        }
+        return NULL;
     } else {
         if (rn->left != NULL) {
             struct line_rope_t *new_left = line_rope_replace_char_at(rn->left, i, new_line_length);
@@ -491,6 +494,8 @@ line_rope_split_at_char(struct line_rope_t *rn, int64_t i,
                    struct line_rope_t **out_new_left,
                    struct line_rope_t **out_new_right)
 {
+    if (rn == NULL) { return; }
+
     if (rn->is_leaf) {
         if (i <= 0) {
             *out_new_left = NULL;
