@@ -166,6 +166,10 @@ rope_char_at(struct rope_t *rn, int64_t i)
 int64_t
 rope_char_number_at_line(struct rope_t *rn, int64_t i)
 {
+    if (rn == NULL) {
+        return 0;
+    }
+
     if (rn->is_leaf) {
         if (rn->line_break_weight < i) {
             return rn->char_weight + 1;
@@ -277,6 +281,10 @@ rope_total_line_break_weight(struct rope_t *rn)
 int64_t
 rope_get_line_number_for_char_pos(struct rope_t *rn, int64_t char_pos)
 {
+    if (rn == NULL) {
+        return 0;
+    }
+
     if (rn->is_leaf) {
         if (rn->char_weight < char_pos) {
             return 0;

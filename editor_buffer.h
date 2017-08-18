@@ -80,6 +80,12 @@ editor_buffer_get_cursor_col_virtual(struct editor_buffer_t editor_buffer, int64
 void
 editor_buffer_set_cursor_point_virtual(struct editor_buffer_t editor_buffer, int64_t row, int64_t col, int32_t virtual_line_length);
 
+void
+editor_buffer_set_cursor_point_virtual_for_cursor_index(struct editor_buffer_t editor_buffer, int64_t cursor_idx, int64_t row, int64_t col, int32_t virtual_line_length);
+
+void
+sort_and_merge_cursors(struct editor_buffer_t editor_buffer);
+
 int64_t
 editor_buffer_get_undo_size(struct editor_buffer_t editor_buffer);
 
@@ -103,6 +109,9 @@ editor_buffer_set_cursor_pos_for_cursor_index(struct editor_buffer_t editor_buff
 
 int64_t
 editor_buffer_get_end_of_row(struct editor_buffer_t editor_buffer, int64_t row);
+
+void
+editor_buffer_set_cursor_point_for_cursor_index(struct editor_buffer_t editor_buffer, int64_t cursor_index, int64_t row, int64_t col);
 
 void
 editor_buffer_set_cursor_point(struct editor_buffer_t editor_buffer, int64_t row, int64_t col);

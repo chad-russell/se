@@ -304,6 +304,13 @@ editor_buffer_has_file_path(struct editor_buffer_t editor_buffer)
 struct cursor_info_t *
 possibly_merge_cursors(struct cursor_info_t *i, struct cursor_info_t *j)
 {
+    if (i->char_pos == i->selection_char_pos) {
+        i->is_selection = 0;
+    }
+    if (j->char_pos == j->selection_char_pos) {
+        j->is_selection = 0;
+    }
+
     if (i->is_selection && j->is_selection) {
         int64_t i_end_selection = i->char_pos;
         int64_t j_start_selection = j->selection_char_pos;
@@ -382,7 +389,6 @@ possibly_merge_cursors(struct cursor_info_t *i, struct cursor_info_t *j)
         }
     }
 
-    SE_ASSERT(0); // all cases should be handled above
     return NULL;
 }
 
@@ -460,8 +466,8 @@ editor_buffer_delete_possibly_only_selection(struct editor_buffer_t editor_buffe
         struct cursor_info_t *cursor_info = (struct cursor_info_t *) vector_at(edited_screen.cursor_infos, i);
 
         if (cursor_info->char_pos == 0 && !cursor_info->is_selection) {
-            cursor_info->selection_char_pos = 1;
-            cursor_info->selection_row = cursor_info->row;
+            cursor_info->selection_char_pos = 0;
+            cursor_info->selection_row = 0;
             continue;
         }
 
@@ -919,7 +925,7 @@ editor_buffer_get_virtual_cursor_row_for_point(struct editor_buffer_t editor_buf
 
     int64_t current_line_length = editor_buffer_get_line_length(editor_buffer, row);
     int32_t last_line = editor_buffer_get_line_count(editor_buffer) == row + 1;
-    if (!last_line && col == current_line_length) {
+    if (!last_line && col == current_line_length && col == virtual_line_length) {
         return virtual_row - 1;
     }
 
@@ -948,7 +954,7 @@ int64_t editor_buffer_get_virtual_cursor_col_for_point(struct editor_buffer_t ed
 
     int64_t current_line_length = editor_buffer_get_line_length(editor_buffer, row);
     int32_t last_line = editor_buffer_get_line_count(editor_buffer) == row + 1;
-    if (!last_line && col == current_line_length) {
+    if (!last_line && col == current_line_length && col == virtual_line_length) {
         return current_line_length;
     }
 
@@ -1073,29 +1079,35 @@ editor_buffer_get_end_of_row(struct editor_buffer_t editor_buffer, int64_t row)
 }
 
 void
+editor_buffer_set_cursor_point_for_cursor_index(struct editor_buffer_t editor_buffer, int64_t cursor_index, int64_t row, int64_t col)
+{
+    struct cursor_info_t *cursor_info = (struct cursor_info_t *) vector_at(editor_buffer.current_screen->cursor_infos, cursor_index);
+
+    int64_t computed_row = row;
+    int64_t row_count = editor_buffer_get_line_count(editor_buffer);
+    if (computed_row > row_count - 1) { computed_row = row_count - 1; }
+    if (computed_row < 0) { computed_row = 0; }
+
+    int64_t start_for_row = editor_buffer_get_char_number_at_line(editor_buffer, computed_row);
+    int64_t end_of_row = editor_buffer_get_end_of_row(editor_buffer, computed_row);
+    int64_t row_length = end_of_row - start_for_row;
+
+    int64_t computed_col = row_length < col ? row_length : col;
+
+    cursor_info->char_pos = start_for_row + computed_col;
+    cursor_info->row = computed_row;
+    cursor_info->col = computed_col;
+
+    if (cursor_info->char_pos == cursor_info->selection_char_pos) {
+        cursor_info->is_selection = 0;
+    }
+}
+
+void
 editor_buffer_set_cursor_point(struct editor_buffer_t editor_buffer, int64_t row, int64_t col)
 {
     for (int64_t i = 0; i < editor_buffer.current_screen->cursor_infos->length; i++) {
-        struct cursor_info_t *cursor_info = (struct cursor_info_t *) vector_at(editor_buffer.current_screen->cursor_infos, i);
-
-        int64_t computed_row = row;
-        int64_t row_count = editor_buffer_get_line_count(editor_buffer);
-        if (computed_row > row_count - 1) { computed_row = row_count - 1; }
-        if (computed_row < 0) { computed_row = 0; }
-
-        int64_t start_for_row = editor_buffer_get_char_number_at_line(editor_buffer, computed_row);
-        int64_t end_of_row = editor_buffer_get_end_of_row(editor_buffer, computed_row);
-        int64_t row_length = end_of_row - start_for_row;
-
-        int64_t computed_col = row_length < col ? row_length : col;
-
-        cursor_info->char_pos = start_for_row + computed_col;
-        cursor_info->row = computed_row;
-        cursor_info->col = computed_col;
-
-        if (cursor_info->char_pos == cursor_info->selection_char_pos) {
-            cursor_info->is_selection = 0;
-        }
+        editor_buffer_set_cursor_point_for_cursor_index(editor_buffer, i, row, col);
     }
 
     sort_and_merge_cursors(editor_buffer);

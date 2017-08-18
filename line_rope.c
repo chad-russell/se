@@ -99,6 +99,7 @@ line_rope_set_right(struct line_rope_t *target, struct line_rope_t *new_right)
     SE_ASSERT(!target->is_leaf);
 
     if (new_right == target->right) { return; }
+    if (new_right == NULL) { return; }
 
     line_rope_dec_rc(target->right);
     target->right = new_right;
