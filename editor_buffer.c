@@ -546,17 +546,15 @@ editor_buffer_delete_possibly_only_selection(struct editor_buffer_t editor_buffe
         int64_t end_row = cursor_info->row;
         if (end_row + lines_deleted != cursor_info->selection_row) {
             struct line_rope_t *new_lines = line_rope_delete(edited_screen.lines, end_row + lines_deleted, cursor_info->selection_row);
+            line_rope_free(edited_screen.lines);
 
             lines_deleted += cursor_info->selection_row - end_row;
-
             uint32_t new_line_length = editor_screen_calculate_line_length(edited_screen, end_row);
 
             struct line_rope_t *newer_lines = line_rope_replace_char_at(new_lines, end_row, new_line_length);
-
-            line_rope_free(edited_screen.lines);
-            edited_screen.lines = newer_lines;
-
             line_rope_free(new_lines);
+
+            edited_screen.lines = newer_lines;
         } else {
             uint32_t new_line_length = editor_screen_calculate_line_length(edited_screen, end_row);
 

@@ -11,15 +11,16 @@ main()
 
 //    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Desktop/very_large.txt");
 //    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/.se_config.json");
-    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Desktop/menu.json");
+//    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Desktop/menu.json");
 //    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Desktop/hello.txt");
+    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Desktop/shakespeare.txt");
 
-    for (uint32_t i = 0; i < 300000; i++) {
-        editor_buffer_insert(buffer, "a");
-        editor_buffer_delete(buffer);
-    }
+//    for (uint32_t i = 0; i < 300000; i++) {
+//        editor_buffer_insert(buffer, "a");
+//        editor_buffer_delete(buffer);
+//    }
 
-    editor_buffer_destroy(buffer);
+//    editor_buffer_destroy(buffer);
 
     // print buffer
 //    for (int64_t i = 0; i < editor_buffer_get_line_count(buffer); i++) {
