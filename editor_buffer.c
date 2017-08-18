@@ -7,14 +7,11 @@
 #include "line_rope.h"
 #include "stack.h"
 
-int64_t
-line_rope_virtual_newline_weight(struct line_rope_t *rn);
-
 void
 editor_screen_set_line_and_col_for_char_pos(struct cursor_info_t *cursor_info, struct rope_t *text);
 
 struct editor_buffer_t
-editor_buffer_create(int32_t virtual_line_length)
+editor_buffer_create(uint32_t virtual_line_length)
 {
     struct editor_buffer_t editor_buffer;
 
@@ -125,12 +122,12 @@ read_file(const char *file_path, struct line_helper_t *line_helper)
     return rn;
 }
 
-int64_t
+uint32_t
 editor_screen_calculate_line_length(struct editor_screen_t screen, int64_t line)
 {
     int64_t char_number_at_current_line = rope_char_number_at_line(screen.text, line);
     int64_t char_number_at_next_line = rope_char_number_at_line(screen.text, line + 1);
-    return char_number_at_next_line - char_number_at_current_line - 1;
+    return (uint32_t) (char_number_at_next_line - char_number_at_current_line - 1);
 }
 
 void
@@ -144,7 +141,7 @@ editor_screen_balance_lines_if_needed(struct editor_screen_t *screen)
 }
 
 void
-ensure_virtual_newline_length(struct line_rope_t *rn, int32_t virtual_line_length)
+ensure_virtual_newline_length(struct line_rope_t *rn, uint32_t virtual_line_length)
 {
     if (rn == NULL) { return; }
     if (rn->virtual_line_length == virtual_line_length) { return; }
@@ -159,7 +156,7 @@ ensure_virtual_newline_length(struct line_rope_t *rn, int32_t virtual_line_lengt
 }
 
 void
-editor_buffer_open_file(struct editor_buffer_t editor_buffer, int32_t virtual_line_length, const char *file_path)
+editor_buffer_open_file(struct editor_buffer_t editor_buffer, uint32_t virtual_line_length, const char *file_path)
 {
     ensure_virtual_newline_length(editor_buffer.current_screen->lines, virtual_line_length);
 
@@ -187,7 +184,6 @@ editor_buffer_open_file(struct editor_buffer_t editor_buffer, int32_t virtual_li
     int64_t line = 0;
     int64_t char_number_at_current_line = 0;
 
-//    int64_t old = rope_char_number_at_line(screen.text, line + 1);
     int64_t char_number_at_next_line;
     if (line >= lines_vector->length) {
         char_number_at_next_line = rope_total_char_length(screen.text) + 1;
@@ -196,17 +192,16 @@ editor_buffer_open_file(struct editor_buffer_t editor_buffer, int32_t virtual_li
         total_line_lengths += line_length;
         char_number_at_next_line = total_line_lengths;
     }
-//    SE_ASSERT(old == char_number_at_next_line);
 
-    struct line_rope_t *rn = line_rope_leaf_init(char_number_at_next_line - char_number_at_current_line - 1,
-                                                 virtual_line_length);
+    struct line_rope_t *rn = line_rope_leaf_init(
+            (uint32_t) (char_number_at_next_line - char_number_at_current_line - 1),
+            virtual_line_length);
     stack_push(stack, &rn);
     line += 1;
     int64_t lines = 1 + rope_total_line_break_length(screen.text);
     while (line < lines) {
         char_number_at_current_line = char_number_at_next_line;
 
-//        old = rope_char_number_at_line(screen.text, line + 1);
         if (line >= lines_vector->length) {
             char_number_at_next_line = rope_total_char_length(screen.text) + 1;
         } else {
@@ -214,9 +209,8 @@ editor_buffer_open_file(struct editor_buffer_t editor_buffer, int32_t virtual_li
             total_line_lengths += line_length - 1;
             char_number_at_next_line = total_line_lengths;
         }
-//        SE_ASSERT(old == char_number_at_next_line);
 
-        rn = line_rope_leaf_init(char_number_at_next_line - char_number_at_current_line - 1, virtual_line_length);
+        rn = line_rope_leaf_init((uint32_t) (char_number_at_next_line - char_number_at_current_line - 1), virtual_line_length);
         stack_push(stack, &rn);
 
         int8_t c = 0;
@@ -254,7 +248,12 @@ editor_buffer_open_file(struct editor_buffer_t editor_buffer, int32_t virtual_li
 
     undo_stack_append(editor_buffer, screen);
 
-    *editor_buffer.file_path = *buf_init_fmt("%str", file_path);
+    if (editor_buffer.file_path != NULL) {
+        free(editor_buffer.file_path);
+    }
+    struct buf_t *file_path_buf = buf_init_fmt("%str", file_path);
+    *editor_buffer.file_path = *file_path_buf;
+    free(file_path_buf);
 }
 
 int32_t
@@ -552,14 +551,14 @@ editor_buffer_delete_possibly_only_selection(struct editor_buffer_t editor_buffe
 
             lines_deleted += cursor_info->selection_row - end_row;
 
-            int64_t new_line_length = editor_screen_calculate_line_length(edited_screen, end_row);
+            uint32_t new_line_length = editor_screen_calculate_line_length(edited_screen, end_row);
             struct line_rope_t *new_lines_with_correct_length = line_rope_replace_char_at(new_lines, end_row, new_line_length);
             line_rope_free(new_lines);
 
             line_rope_free(edited_screen.lines);
             edited_screen.lines = new_lines_with_correct_length;
         } else {
-            int64_t new_line_length = editor_screen_calculate_line_length(edited_screen, end_row);
+            uint32_t new_line_length = editor_screen_calculate_line_length(edited_screen, end_row);
             struct line_rope_t *new_lines = line_rope_replace_char_at(edited_screen.lines, end_row, new_line_length);
 
             line_rope_free(edited_screen.lines);
@@ -615,7 +614,7 @@ editor_buffer_insert(struct editor_buffer_t editor_buffer, const char *text)
         int64_t cursor_line_after = cursor_info->row + count_newlines(text);
 
         int64_t line = cursor_line_before;
-        int64_t line_length = editor_screen_calculate_line_length(edited_screen, line);
+        uint32_t line_length = editor_screen_calculate_line_length(edited_screen, line);
         struct line_rope_t *new_lines = line_rope_replace_char_at(edited_screen.lines,
                                                                   line,
                                                                   line_length);
@@ -736,7 +735,7 @@ int64_t
 editor_buffer_character_position_for_virtual_point(struct editor_buffer_t editor_buffer,
                                                    int64_t line,
                                                    int64_t col,
-                                                   int32_t virtual_line_length)
+                                                  uint32_t virtual_line_length)
 {
     ensure_virtual_newline_length(editor_buffer.current_screen->lines, virtual_line_length);
 
@@ -769,13 +768,13 @@ int64_t
 editor_buffer_get_line_length(struct editor_buffer_t editor_buffer, int64_t line)
 {
     struct line_rope_t *found_line = line_rope_char_at(editor_buffer.current_screen->lines, line);
-    int64_t found_line_length = found_line == NULL ? -1 : found_line->line_length;
+    int64_t found_line_length = found_line == NULL ? -1 : (int64_t) found_line->line_length;
 
     return found_line_length;
 }
 
 int64_t
-editor_buffer_get_line_length_virtual(struct editor_buffer_t editor_buffer, int64_t line, int32_t virtual_line_length)
+editor_buffer_get_line_length_virtual(struct editor_buffer_t editor_buffer, int64_t line, uint32_t virtual_line_length)
 {
     ensure_virtual_newline_length(editor_buffer.current_screen->lines, virtual_line_length);
 
@@ -789,7 +788,7 @@ editor_buffer_get_line_length_virtual(struct editor_buffer_t editor_buffer, int6
 }
 
 int64_t
-editor_buffer_get_line_count_virtual(struct editor_buffer_t editor_buffer, int32_t virtual_line_length)
+editor_buffer_get_line_count_virtual(struct editor_buffer_t editor_buffer, uint32_t virtual_line_length)
 {
     ensure_virtual_newline_length(editor_buffer.current_screen->lines, virtual_line_length);
 
@@ -856,7 +855,7 @@ struct buf_t *
 editor_buffer_get_text_between_points_virtual(struct editor_buffer_t editor_buffer,
                                               int64_t start_line, int64_t start_col,
                                               int64_t end_line, int64_t end_col,
-                                              int32_t virtual_line_length)
+                                             uint32_t virtual_line_length)
 {
     ensure_virtual_newline_length(editor_buffer.current_screen->lines, virtual_line_length);
 
@@ -907,7 +906,7 @@ int64_t
 editor_buffer_get_virtual_cursor_row_for_point(struct editor_buffer_t editor_buffer,
                                                int64_t row,
                                                int64_t col,
-                                               int32_t virtual_line_length)
+                                              uint32_t virtual_line_length)
 {
     ensure_virtual_newline_length(editor_buffer.current_screen->lines, virtual_line_length);
 
@@ -933,7 +932,7 @@ editor_buffer_get_virtual_cursor_row_for_point(struct editor_buffer_t editor_buf
 }
 
 int64_t
-editor_buffer_get_cursor_row_virtual(struct editor_buffer_t editor_buffer, int64_t cursor_idx, int32_t virtual_line_length)
+editor_buffer_get_cursor_row_virtual(struct editor_buffer_t editor_buffer, int64_t cursor_idx, uint32_t virtual_line_length)
 {
     ensure_virtual_newline_length(editor_buffer.current_screen->lines, virtual_line_length);
 
@@ -948,7 +947,7 @@ editor_buffer_get_cursor_row_virtual(struct editor_buffer_t editor_buffer, int64
 int64_t editor_buffer_get_virtual_cursor_col_for_point(struct editor_buffer_t editor_buffer,
                                                        int64_t row,
                                                        int64_t col,
-                                                       int32_t virtual_line_length)
+                                                      uint32_t virtual_line_length)
 {
     ensure_virtual_newline_length(editor_buffer.current_screen->lines, virtual_line_length);
 
@@ -962,7 +961,7 @@ int64_t editor_buffer_get_virtual_cursor_col_for_point(struct editor_buffer_t ed
 }
 
 int64_t
-editor_buffer_get_cursor_col_virtual(struct editor_buffer_t editor_buffer, int64_t cursor_idx, int32_t virtual_line_length)
+editor_buffer_get_cursor_col_virtual(struct editor_buffer_t editor_buffer, int64_t cursor_idx, uint32_t virtual_line_length)
 {
     ensure_virtual_newline_length(editor_buffer.current_screen->lines, virtual_line_length);
 
@@ -974,7 +973,7 @@ editor_buffer_get_cursor_col_virtual(struct editor_buffer_t editor_buffer, int64
 }
 
 void
-editor_buffer_set_cursor_point_virtual_for_cursor_index(struct editor_buffer_t editor_buffer, int64_t cursor_idx, int64_t row, int64_t col, int32_t virtual_line_length)
+editor_buffer_set_cursor_point_virtual_for_cursor_index(struct editor_buffer_t editor_buffer, int64_t cursor_idx, int64_t row, int64_t col, uint32_t virtual_line_length)
 {
     struct cursor_info_t *cursor_info = (struct cursor_info_t *) vector_at(editor_buffer.current_screen->cursor_infos, cursor_idx);
 
@@ -994,7 +993,7 @@ editor_buffer_set_cursor_point_virtual_for_cursor_index(struct editor_buffer_t e
 }
 
 void
-editor_buffer_set_cursor_point_virtual(struct editor_buffer_t editor_buffer, int64_t row, int64_t col, int32_t virtual_line_length)
+editor_buffer_set_cursor_point_virtual(struct editor_buffer_t editor_buffer, int64_t row, int64_t col, uint32_t virtual_line_length)
 {
     for (int64_t i = 0; i < editor_buffer.current_screen->cursor_infos->length; i++) {
         editor_buffer_set_cursor_point_virtual_for_cursor_index(editor_buffer, i, row, col, virtual_line_length);
@@ -1139,7 +1138,7 @@ editor_buffer_set_cursor_point_to_end_of_line(struct editor_buffer_t editor_buff
 }
 
 void
-editor_buffer_set_cursor_point_to_start_of_line_virtual(struct editor_buffer_t editor_buffer, int32_t virtual_line_length)
+editor_buffer_set_cursor_point_to_start_of_line_virtual(struct editor_buffer_t editor_buffer, uint32_t virtual_line_length)
 {
     for (int64_t i = 0; i < editor_buffer.current_screen->cursor_infos->length; i++) {
         int64_t row = editor_buffer_get_cursor_row_virtual(editor_buffer, i, virtual_line_length);
@@ -1150,7 +1149,7 @@ editor_buffer_set_cursor_point_to_start_of_line_virtual(struct editor_buffer_t e
 }
 
 void
-editor_buffer_set_cursor_point_to_end_of_line_virtual(struct editor_buffer_t editor_buffer, int32_t virtual_line_length)
+editor_buffer_set_cursor_point_to_end_of_line_virtual(struct editor_buffer_t editor_buffer, uint32_t virtual_line_length)
 {
     for (int64_t i = 0; i < editor_buffer.current_screen->cursor_infos->length; i++) {
         int64_t row = editor_buffer_get_cursor_row_virtual(editor_buffer, i, virtual_line_length);
@@ -1187,7 +1186,7 @@ editor_buffer_add_cursor_at_point(struct editor_buffer_t editor_buffer, int64_t 
 }
 
 void
-editor_buffer_add_cursor_at_point_virtual(struct editor_buffer_t editor_buffer, int64_t row, int64_t col, int32_t virtual_line_length)
+editor_buffer_add_cursor_at_point_virtual(struct editor_buffer_t editor_buffer, int64_t row, int64_t col, uint32_t virtual_line_length)
 {
     ensure_virtual_newline_length(editor_buffer.current_screen->lines, virtual_line_length);
 
@@ -1239,7 +1238,7 @@ editor_buffer_set_cursor_pos_relative(struct editor_buffer_t editor_buffer, int6
 }
 
 int64_t
-editor_buffer_get_cursor_selection_start_row_virtual(struct editor_buffer_t editor_buffer, int64_t cursor_idx, int32_t virtual_line_length)
+editor_buffer_get_cursor_selection_start_row_virtual(struct editor_buffer_t editor_buffer, int64_t cursor_idx, uint32_t virtual_line_length)
 {
     struct cursor_info_t *cursor_info = (struct cursor_info_t *) vector_at(editor_buffer.current_screen->cursor_infos, cursor_idx);
 
@@ -1252,7 +1251,7 @@ editor_buffer_get_cursor_selection_start_row_virtual(struct editor_buffer_t edit
 }
 
 int64_t
-editor_buffer_get_cursor_selection_start_col_virtual(struct editor_buffer_t editor_buffer, int64_t cursor_idx, int32_t virtual_line_length)
+editor_buffer_get_cursor_selection_start_col_virtual(struct editor_buffer_t editor_buffer, int64_t cursor_idx, uint32_t virtual_line_length)
 {
     struct cursor_info_t *cursor_info = (struct cursor_info_t *) vector_at(editor_buffer.current_screen->cursor_infos, cursor_idx);
 

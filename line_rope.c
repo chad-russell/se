@@ -14,16 +14,13 @@
 
 // forward declarations
 struct line_rope_t *
-line_rope_new(int8_t is_leaf, int32_t virtual_line_length);
+line_rope_new(int8_t is_leaf, uint32_t virtual_line_length);
 
-int64_t
+uint32_t
 line_rope_line_length(struct line_rope_t *rn);
 
-int64_t
+uint32_t
 line_rope_char_weight(struct line_rope_t *rn);
-
-int64_t
-line_rope_virtual_newline_weight(struct line_rope_t *rn);
 
 void
 line_rope_split_at_char(struct line_rope_t *rn, int64_t i,
@@ -33,12 +30,12 @@ line_rope_split_at_char(struct line_rope_t *rn, int64_t i,
 struct line_rope_t *
 line_rope_concat(struct line_rope_t *left, struct line_rope_t *right);
 
-int64_t
+uint32_t
 line_rope_total_line_length(struct line_rope_t *rn);
 
 // init
 struct line_rope_t *
-line_rope_new(int8_t is_leaf, int32_t virtual_line_length)
+line_rope_new(int8_t is_leaf, uint32_t virtual_line_length)
 {
     struct line_rope_t *rn = se_alloc(1, sizeof(struct line_rope_t));
 
@@ -50,7 +47,7 @@ line_rope_new(int8_t is_leaf, int32_t virtual_line_length)
 }
 
 struct line_rope_t *
-line_rope_parent_init(struct line_rope_t *left, struct line_rope_t *right, int32_t virtual_line_length)
+line_rope_parent_init(struct line_rope_t *left, struct line_rope_t *right, uint32_t virtual_line_length)
 {
     struct line_rope_t *rn = line_rope_new(0, virtual_line_length);
 
@@ -72,7 +69,7 @@ line_rope_parent_init(struct line_rope_t *left, struct line_rope_t *right, int32
 }
 
 struct line_rope_t *
-line_rope_leaf_init(int64_t line_length, int32_t virtual_line_length)
+line_rope_leaf_init(uint32_t line_length, uint32_t virtual_line_length)
 {
     struct line_rope_t *rn = line_rope_new(1, virtual_line_length);
 
@@ -156,7 +153,7 @@ line_rope_char_at(struct line_rope_t *rn, int64_t i)
 }
 
 struct line_rope_t *
-line_rope_replace_char_at(struct line_rope_t *rn, int64_t i, int64_t new_line_length)
+line_rope_replace_char_at(struct line_rope_t *rn, int64_t i, uint32_t new_line_length)
 {
     if (rn->is_leaf) {
         if (rn->char_weight - 1 < i) {
@@ -186,7 +183,7 @@ line_rope_replace_char_at(struct line_rope_t *rn, int64_t i, int64_t new_line_le
     }
 }
 
-int64_t
+uint32_t
 line_rope_total_char_length(struct line_rope_t *rn)
 {
     if (rn == NULL) { return 0; }
@@ -194,7 +191,7 @@ line_rope_total_char_length(struct line_rope_t *rn)
     return rn->total_char_weight;
 }
 
-int64_t
+uint32_t
 line_rope_total_char_weight(struct line_rope_t *rn)
 {
     if (rn == NULL) { return 0; }
@@ -234,7 +231,7 @@ line_rope_height(struct line_rope_t *rn)
     return rn->height;
 }
 
-int64_t
+uint32_t
 line_rope_total_virtual_newline_length(struct line_rope_t *rn)
 {
     if (rn == NULL) {
@@ -244,7 +241,7 @@ line_rope_total_virtual_newline_length(struct line_rope_t *rn)
     return rn->total_virtual_newline_count;
 }
 
-int64_t
+uint32_t
 line_rope_total_virtual_newline_weight(struct line_rope_t *rn)
 {
     if (rn == NULL) { return 0; }
@@ -319,7 +316,7 @@ line_rope_balance(struct line_rope_t *rn)
 }
 
 struct line_rope_t *
-line_rope_insert(struct line_rope_t *rn, int64_t i, int64_t line_length)
+line_rope_insert(struct line_rope_t *rn, int64_t i, uint32_t line_length)
 {
     struct line_rope_t *split_left;
     struct line_rope_t *split_right;
@@ -364,7 +361,6 @@ line_rope_free(struct line_rope_t *rn)
 {
     if (rn == NULL) { return; }
 
-    if (rn->rc > 0) { return; }
     SE_ASSERT(rn->rc == 0);
 
     if (!rn->is_leaf) {
@@ -394,7 +390,7 @@ line_rope_shallow_copy(struct line_rope_t *rn)
     return copy;
 }
 
-int64_t
+uint32_t
 line_rope_total_line_length(struct line_rope_t *rn)
 {
     if (rn == NULL) { return 0; }
@@ -413,7 +409,7 @@ line_rope_total_line_length(struct line_rope_t *rn)
     return rn->total_line_length;
 }
 
-int64_t
+uint32_t
 line_rope_line_length(struct line_rope_t *rn)
 {
     if (rn == NULL) {
@@ -427,7 +423,7 @@ line_rope_line_length(struct line_rope_t *rn)
     return line_rope_total_line_length(rn->left);
 }
 
-int64_t
+uint32_t
 line_rope_char_weight(struct line_rope_t *rn)
 {
     if (rn == NULL) {
@@ -441,7 +437,7 @@ line_rope_char_weight(struct line_rope_t *rn)
     return line_rope_total_char_length(rn->left);
 }
 
-int64_t
+uint32_t
 line_rope_virtual_newline_weight(struct line_rope_t *rn)
 {
     if (rn == NULL) {
@@ -449,8 +445,8 @@ line_rope_virtual_newline_weight(struct line_rope_t *rn)
     }
 
     if (rn->is_leaf) {
-        int64_t line_length = rn->line_length;
-        int64_t virtual_line_count = 0;
+        uint32_t line_length = rn->line_length;
+        uint32_t virtual_line_count = 0;
 
         if (line_length == 0) {
             virtual_line_count += 1;

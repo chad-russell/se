@@ -21,13 +21,10 @@ rope_byte_weight(struct rope_t *rn);
 int64_t
 rope_char_weight(struct rope_t *rn);
 
-int64_t
+uint32_t
 rope_line_break_weight(struct rope_t *rn);
 
-int64_t
-count_newlines(const char *str);
-
-int64_t
+uint32_t
 count_newlines_length(const char *str, int64_t i, struct line_helper_t *line_helper);
 
 void
@@ -259,7 +256,7 @@ rope_total_line_break_length(struct rope_t *rn)
     return rn->total_line_break_weight;
 }
 
-int64_t
+uint32_t
 rope_total_line_break_weight(struct rope_t *rn)
 {
     if (rn == NULL) { return 0; }
@@ -388,11 +385,16 @@ undo_stack_append(struct editor_buffer_t editor_buffer, struct editor_screen_t s
     // if we are overwriting something, free it first
     struct editor_screen_t *screen_to_overwrite = circular_buffer_next(editor_buffer.undo_buffer);
     if (screen_to_overwrite != NULL) {
-        rope_dec_rc(screen_to_overwrite->text);
-        line_rope_dec_rc(screen_to_overwrite->lines);
+        if (screen.text != NULL) {
+            rope_dec_rc(screen_to_overwrite->text);
+        }
+
+        if (screen_to_overwrite->lines != NULL) {
+            line_rope_dec_rc(screen_to_overwrite->lines);
+        }
 
         if (screen_to_overwrite->cursor_infos != NULL) {
-            for (int64_t cursor_idx = 0; cursor_idx < screen_to_overwrite->cursor_infos->length; cursor_idx++) {
+            for (int64_t cursor_idx = 1; cursor_idx < screen_to_overwrite->cursor_infos->length; cursor_idx++) {
                 se_free(vector_at(screen_to_overwrite->cursor_infos, cursor_idx));
             }
             vector_free(screen_to_overwrite->cursor_infos);
@@ -539,7 +541,7 @@ rope_char_weight(struct rope_t *rn)
     return rope_total_char_length(rn->left);
 }
 
-int64_t
+uint32_t
 rope_line_break_weight(struct rope_t *rn)
 {
     if (rn == NULL) {
@@ -553,22 +555,22 @@ rope_line_break_weight(struct rope_t *rn)
     return rope_total_line_break_length(rn->left);
 }
 
-int64_t
+uint32_t
 count_newlines(const char *str)
 {
     if (str == NULL) { return 0; }
-    int64_t newline_count = 0;
+    uint32_t newline_count = 0;
     for (const char *c = str; *c != 0; c++) {
         if (*c == '\n') { newline_count += 1; }
     }
     return newline_count;
 }
 
-int64_t
+uint32_t
 count_newlines_length(const char *str, int64_t i, struct line_helper_t *line_helper)
 {
     if (str == NULL) { return 0; }
-    int64_t newline_count = 0;
+    uint32_t newline_count = 0;
 
     int64_t length = 0;
 

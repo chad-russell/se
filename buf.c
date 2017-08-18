@@ -471,7 +471,7 @@ buf_write_line_rope_helper(struct buf_t *buf, struct line_rope_t *line_rope, int
         return;
     }
 
-    buf_write_fmt(buf, "%r_char{line_length: %i64, virtual_newline_count: %i64, total_virtual_newline_count: %i64}[rc:%i32]\n",
+    buf_write_fmt(buf, "%r_char{line_length: %i64, virtual_newline_count: %u32, total_virtual_newline_count: %i64}[rc:%i32]\n",
                   indent, ' ',
                   line_rope->line_length,
                   line_rope->virtual_newline_count,
