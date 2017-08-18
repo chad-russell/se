@@ -11,13 +11,13 @@ main()
 
 //    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Desktop/very_large.txt");
 //    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/.se_config.json");
-//    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Desktop/menu.json");
+    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Desktop/menu.json");
 //    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Desktop/hello.txt");
 
-//    for (uint32_t i = 0; i < 1000000; i++) {
+    for (uint32_t i = 0; i < 300000; i++) {
         editor_buffer_insert(buffer, "a");
-//        editor_buffer_delete(buffer);
-//    }
+        editor_buffer_delete(buffer);
+    }
 
     editor_buffer_destroy(buffer);
 

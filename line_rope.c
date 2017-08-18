@@ -152,28 +152,37 @@ line_rope_char_at(struct line_rope_t *rn, int64_t i)
     }
 }
 
-void
+struct line_rope_t *
 line_rope_replace_char_at(struct line_rope_t *rn, int64_t i, uint32_t new_line_length)
 {
     if (rn->is_leaf) {
         if (rn->char_weight - 1 < i) {
-            return;
+            return NULL;
         }
 
-        rn->line_length = new_line_length;
-        rn->total_line_length = new_line_length;
+        struct line_rope_t *new_line = line_rope_leaf_init(new_line_length, rn->virtual_line_length);
+        return new_line;
     }
-    else if (rn->char_weight - 1 < i) {
+
+    if (rn->char_weight - 1 < i) {
         if (rn->right != NULL) {
-            line_rope_replace_char_at(rn->right, i - rn->char_weight, new_line_length);
+            struct line_rope_t *new_right = line_rope_replace_char_at(rn->right, i - rn->char_weight, new_line_length);
+            struct line_rope_t *copy = line_rope_shallow_copy(rn);
+            line_rope_set_right(copy, new_right);
+            return copy;
         }
-    }
-    else {
+        return NULL;
+    } else {
         if (rn->left != NULL) {
-            line_rope_replace_char_at(rn->left, i, new_line_length);
+            struct line_rope_t *new_left = line_rope_replace_char_at(rn->left, i, new_line_length);
+            struct line_rope_t *copy = line_rope_shallow_copy(rn);
+            line_rope_set_left(copy, new_left);
+            return copy;
         }
+        return NULL;
     }
 }
+
 
 uint32_t
 line_rope_total_char_length(struct line_rope_t *rn)

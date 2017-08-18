@@ -319,21 +319,6 @@ rope_insert(struct rope_t *rn, int64_t i, const char *text)
     struct rope_t *combined_left = rope_concat(split_left, insert);
     struct rope_t *cat = rope_concat(combined_left, split_right);
 
-//    if (split_left != NULL
-//        && split_left != cat
-//        && cat->left != split_left
-//        && cat->right != split_left
-//        && split_left->rc == 0) {
-//        rope_free(split_left);
-//    }
-//    if (split_right != NULL
-//        && split_right != cat
-//        && cat->left != split_right
-//        && cat->right != split_right
-//        && split_right->rc == 0) {
-//        rope_free(split_right);
-//    }
-
     return cat;
 }
 
@@ -368,8 +353,7 @@ rope_free(struct rope_t *rn)
 {
     if (rn == NULL) { return; }
 
-    if (rn->rc > 0) { return; }
-    SE_ASSERT(rn->rc == 0);
+    if (rn->rc != 0) { return; }
 
     rn->rc = -1;
 
@@ -716,18 +700,12 @@ rope_concat(struct rope_t *left, struct rope_t *right)
             }
         }
         else if (left->right == NULL) {
-            struct rope_t *cat = rope_shallow_copy(left);
-            rope_set_right(cat, right);
-            return cat;
+            rope_set_right(left, right);
+            return left;
         }
-        else if (left->right->is_leaf
-                 && left->right->byte_weight + right->byte_weight < COPY_THRESHOLD) {
-            struct rope_t *cat = rope_shallow_copy(left);
-            rope_set_right(cat, rope_leaf_init_concat(left->right, right));
-
-            rope_free(left);
-
-            return cat;
+        else if (left->right->is_leaf && left->right->byte_weight + right->byte_weight < COPY_THRESHOLD) {
+            rope_set_right(left, rope_leaf_init_concat(left->right, right));
+            return left;
         }
     }
 

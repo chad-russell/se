@@ -7,16 +7,14 @@ TODO(chad):
     - find/replace
       - will need to be able to efficiently iterate through leaf nodes in order
       - going from the top down to get char 1, char 2, char 3, etc. will not be very efficient.
+    - configure tabs/spaces
     - keybindings, modal editing
-   - cursor history (cirucular buffer that we can navigate which carries a history of cursor_info, similar to IntelliJ)
-   	- should this work across multiple files? what if we make significant edits, the cursor positions will be wrong
-   	- should make sure the cursor is always visible when seeking to a position in the history
     - watch open files for changes (?)
-    	- indicate when a file has changed on disk since we started editing it
-     	- warn when going to save a file but it has changed since we've opened it
+      - indicate when a file has changed on disk since we started editing it
+      - warn when going to save a file but it has changed since we've opened it
    	- maybe just provide a 'reload from disk' command
     - tokenization (possibly supporting custom api?) and corresponding highlighting of grammars
-	   - test on json
+      - test on json
     - selection through click/drag
     - plugins, user-created commands
     - support other file encodings

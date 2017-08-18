@@ -24,7 +24,7 @@ line_rope_set_left(struct line_rope_t *target, struct line_rope_t *new_left);
 struct line_rope_t *
 line_rope_char_at(struct line_rope_t *rn, int64_t i);
 
-void
+struct line_rope_t *
 line_rope_replace_char_at(struct line_rope_t *rn, int64_t i, uint32_t new_line_length);
 
 struct line_rope_t *
