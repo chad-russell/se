@@ -314,10 +314,25 @@ rope_insert(struct rope_t *rn, int64_t i, const char *text)
     struct rope_t *split_right;
     rope_split_at_char(rn, i, &split_left, &split_right);
 
-    struct rope_t *new_right = rope_leaf_init(text);
+    struct rope_t *insert = rope_leaf_init(text);
 
-    struct rope_t *combined_left = rope_concat(split_left, new_right);
+    struct rope_t *combined_left = rope_concat(split_left, insert);
     struct rope_t *cat = rope_concat(combined_left, split_right);
+
+//    if (split_left != NULL
+//        && split_left != cat
+//        && cat->left != split_left
+//        && cat->right != split_left
+//        && split_left->rc == 0) {
+//        rope_free(split_left);
+//    }
+//    if (split_right != NULL
+//        && split_right != cat
+//        && cat->left != split_right
+//        && cat->right != split_right
+//        && split_right->rc == 0) {
+//        rope_free(split_right);
+//    }
 
     return cat;
 }
@@ -356,6 +371,8 @@ rope_free(struct rope_t *rn)
     if (rn->rc > 0) { return; }
     SE_ASSERT(rn->rc == 0);
 
+    rn->rc = -1;
+
     if (!rn->is_leaf) {
         rope_dec_rc(rn->left);
         rope_dec_rc(rn->right);
@@ -393,13 +410,6 @@ undo_stack_append(struct editor_buffer_t editor_buffer, struct editor_screen_t s
             line_rope_dec_rc(screen_to_overwrite->lines);
         }
 
-        if (screen_to_overwrite->cursor_infos != NULL) {
-            for (int64_t cursor_idx = 1; cursor_idx < screen_to_overwrite->cursor_infos->length; cursor_idx++) {
-                se_free(vector_at(screen_to_overwrite->cursor_infos, cursor_idx));
-            }
-            vector_free(screen_to_overwrite->cursor_infos);
-        }
-
         // nullify this so that the next time we come to it we don't try to free garbage rope data
         circular_buffer_set_next_write_index_null(editor_buffer.undo_buffer);
     }
@@ -420,6 +430,10 @@ global_only_undo_stack_append(struct editor_buffer_t editor_buffer, struct edito
     if (screen_to_overwrite != NULL) {
         rope_dec_rc(screen_to_overwrite->text);
         line_rope_dec_rc(screen_to_overwrite->lines);
+
+        if (screen_to_overwrite->cursor_infos != NULL) {
+            vector_free(screen_to_overwrite->cursor_infos);
+        }
 
         // nullify this so that the next time we come to it we don't try to free garbage rope data
         circular_buffer_set_next_write_index_null(editor_buffer.global_undo_buffer);

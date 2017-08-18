@@ -552,17 +552,13 @@ editor_buffer_delete_possibly_only_selection(struct editor_buffer_t editor_buffe
             lines_deleted += cursor_info->selection_row - end_row;
 
             uint32_t new_line_length = editor_screen_calculate_line_length(edited_screen, end_row);
-            struct line_rope_t *new_lines_with_correct_length = line_rope_replace_char_at(new_lines, end_row, new_line_length);
-            line_rope_free(new_lines);
-
-            line_rope_free(edited_screen.lines);
-            edited_screen.lines = new_lines_with_correct_length;
-        } else {
-            uint32_t new_line_length = editor_screen_calculate_line_length(edited_screen, end_row);
-            struct line_rope_t *new_lines = line_rope_replace_char_at(edited_screen.lines, end_row, new_line_length);
+            line_rope_replace_char_at(new_lines, end_row, new_line_length);
 
             line_rope_free(edited_screen.lines);
             edited_screen.lines = new_lines;
+        } else {
+            uint32_t new_line_length = editor_screen_calculate_line_length(edited_screen, end_row);
+            line_rope_replace_char_at(edited_screen.lines, end_row, new_line_length);
         }
     }
 
@@ -604,7 +600,6 @@ editor_buffer_insert(struct editor_buffer_t editor_buffer, const char *text)
         int64_t cursor_line_before = cursor_info->row;
 
         struct rope_t *edited = rope_insert(edited_screen.text, cursor_info->char_pos, text);
-
         rope_free(edited_screen.text);
         edited_screen.text = edited;
 
@@ -615,24 +610,19 @@ editor_buffer_insert(struct editor_buffer_t editor_buffer, const char *text)
 
         int64_t line = cursor_line_before;
         uint32_t line_length = editor_screen_calculate_line_length(edited_screen, line);
-        struct line_rope_t *new_lines = line_rope_replace_char_at(edited_screen.lines,
-                                                                  line,
-                                                                  line_length);
+        line_rope_replace_char_at(edited_screen.lines,
+                                  line,
+                                  line_length);
         line += 1;
         while (line <= cursor_line_after) {
             line_length = editor_screen_calculate_line_length(edited_screen, line);
-            struct line_rope_t *saved_new_lines = new_lines;
-            new_lines = line_rope_insert(new_lines,
-                                         line,
-                                         line_length);
+            struct line_rope_t *saved_new_lines = edited_screen.lines;
+            edited_screen.lines = line_rope_insert(edited_screen.lines,
+                                                   line,
+                                                   line_length);
             line_rope_free(saved_new_lines);
             line += 1;
         }
-
-        // todo(chad): @Performance
-        // we should find a way to recalculate line lengths only after we've done all the edits
-        line_rope_free(edited_screen.lines);
-        edited_screen.lines = new_lines;
     }
 
     for (int64_t i = edited_screen.cursor_infos->length - 1; i >= 0; i--) {
