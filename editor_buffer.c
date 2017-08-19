@@ -11,7 +11,7 @@ void
 editor_screen_set_line_and_col_for_char_pos(struct cursor_info_t *cursor_info, struct rope_t *text);
 
 struct editor_buffer_t
-editor_buffer_create(int64_t virtual_line_length)
+editor_buffer_create(uint32_t virtual_line_length)
 {
     struct editor_buffer_t editor_buffer;
 
@@ -156,7 +156,7 @@ ensure_virtual_newline_length(struct line_rope_t *rn, int64_t virtual_line_lengt
 }
 
 void
-editor_buffer_open_file(struct editor_buffer_t editor_buffer, int64_t virtual_line_length, const char *file_path)
+editor_buffer_open_file(struct editor_buffer_t editor_buffer, uint32_t virtual_line_length, const char *file_path)
 {
     ensure_virtual_newline_length(editor_buffer.current_screen->lines, virtual_line_length);
 
@@ -194,7 +194,7 @@ editor_buffer_open_file(struct editor_buffer_t editor_buffer, int64_t virtual_li
     }
 
     struct line_rope_t *rn = line_rope_leaf_init(
-            (int64_t) (char_number_at_next_line - char_number_at_current_line - 1),
+            (uint32_t) (char_number_at_next_line - char_number_at_current_line - 1),
             virtual_line_length);
     stack_push(stack, &rn);
     line += 1;
@@ -210,7 +210,7 @@ editor_buffer_open_file(struct editor_buffer_t editor_buffer, int64_t virtual_li
             char_number_at_next_line = total_line_lengths;
         }
 
-        rn = line_rope_leaf_init((int64_t) (char_number_at_next_line - char_number_at_current_line - 1), virtual_line_length);
+        rn = line_rope_leaf_init((uint32_t) (char_number_at_next_line - char_number_at_current_line - 1), virtual_line_length);
         stack_push(stack, &rn);
 
         int8_t c = 0;
@@ -543,22 +543,41 @@ editor_buffer_delete_possibly_only_selection(struct editor_buffer_t editor_buffe
 
         int64_t end_row = cursor_info->row;
         if (end_row + lines_deleted != cursor_info->selection_row) {
-            struct line_rope_t *new_lines = line_rope_delete(edited_screen.lines, end_row + lines_deleted, cursor_info->selection_row);
-            line_rope_free(edited_screen.lines);
+            struct line_rope_t *saved_lines = edited_screen.lines;
+            
+            SE_ASSERT(end_row + lines_deleted < cursor_info->selection_row);
+            edited_screen.lines = line_rope_delete(edited_screen.lines, end_row + lines_deleted, cursor_info->selection_row);
+            line_rope_free(saved_lines);
 
-            lines_deleted += cursor_info->selection_row - end_row;
+            lines_deleted = cursor_info->selection_row - end_row;
             int64_t new_line_length = editor_screen_calculate_line_length(edited_screen, end_row);
 
-            struct line_rope_t *newer_lines = line_rope_replace_char_at(new_lines, end_row, new_line_length);
-            line_rope_free(new_lines);
+            saved_lines = edited_screen.lines;
+            edited_screen.lines = line_rope_replace_char_at(edited_screen.lines, end_row, new_line_length);
+            line_rope_free(saved_lines);
+            
+            int64_t total_lines = 1 + rope_total_line_break_length(edited_screen.text);
+            if (end_row + 1 < total_lines) {
+                new_line_length = editor_screen_calculate_line_length(edited_screen, end_row + 1);
 
-            edited_screen.lines = newer_lines;
+                saved_lines = edited_screen.lines;
+                edited_screen.lines = line_rope_replace_char_at(edited_screen.lines, end_row + 1, new_line_length);
+                line_rope_free(saved_lines);
+            }
         } else {
             int64_t new_line_length = editor_screen_calculate_line_length(edited_screen, end_row);
 
             struct line_rope_t *saved_lines = edited_screen.lines;
             edited_screen.lines = line_rope_replace_char_at(edited_screen.lines, end_row, new_line_length);
             line_rope_free(saved_lines);
+
+//            for (int64_t j = end_row; j <= cursor_info->selection_row; j++) {
+//                int64_t new_line_length = editor_screen_calculate_line_length(edited_screen, j);
+//
+//                struct line_rope_t *saved_lines = edited_screen.lines;
+//                edited_screen.lines = line_rope_replace_char_at(edited_screen.lines, j, new_line_length);
+//                line_rope_free(saved_lines);
+//            }
         }
     }
 

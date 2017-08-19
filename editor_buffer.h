@@ -4,13 +4,13 @@
 #include "forward_types.h"
 
 struct editor_buffer_t
-editor_buffer_create(int64_t virtual_line_length);
+editor_buffer_create(uint32_t virtual_line_length);
 
 void
 editor_buffer_destroy(struct editor_buffer_t editor_buffer);
 
 void
-editor_buffer_open_file(struct editor_buffer_t editor_buffer, int64_t virtual_line_length, const char *file_path);
+editor_buffer_open_file(struct editor_buffer_t editor_buffer, uint32_t virtual_line_length, const char *file_path);
 
 int32_t
 editor_buffer_save_file(struct editor_buffer_t editor_buffer);

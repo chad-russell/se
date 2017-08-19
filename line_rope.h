@@ -12,7 +12,7 @@ struct line_rope_t *
 line_rope_parent_init(struct line_rope_t *left, struct line_rope_t *right, int64_t virtual_line_length);
 
 struct line_rope_t *
-line_rope_leaf_init(int64_t line_length, int64_t virtual_line_length);
+line_rope_leaf_init(uint32_t line_length, uint32_t virtual_line_length);
 
 // methods
 void
@@ -30,22 +30,22 @@ line_rope_replace_char_at(struct line_rope_t *rn, int64_t i, int64_t new_line_le
 struct line_rope_t *
 line_rope_shallow_copy(struct line_rope_t *rn);
 
-int64_t
+uint32_t
 line_rope_total_char_length(struct line_rope_t *rn);
 
-int64_t
+uint32_t
 line_rope_total_char_weight(struct line_rope_t *rn);
 
 int64_t
 line_rope_height(struct line_rope_t *rn);
 
-int64_t
+uint32_t
 line_rope_virtual_newline_weight(struct line_rope_t *rn);
 
-int64_t
+uint32_t
 line_rope_total_virtual_newline_length(struct line_rope_t *rn);
 
-int64_t
+uint32_t
 line_rope_total_virtual_newline_weight(struct line_rope_t *rn);
 
 struct line_rope_t *

@@ -32,17 +32,17 @@ struct rope_t {
 // todo(chad): make most (all?) of these into int64_t instead of int64_t
 struct line_rope_t {
     // how long is this line?
-    int64_t line_length;
-    int64_t total_line_length;
+    uint32_t line_length;
+    uint32_t total_line_length;
 
     // every leaf counts for one 'character'
-    int64_t char_weight;
-    int64_t total_char_weight;
+    uint32_t char_weight;
+    uint32_t total_char_weight;
 
-    int64_t virtual_line_length;
+    uint32_t virtual_line_length;
 
-    int64_t virtual_newline_count;
-    int64_t total_virtual_newline_count;
+    uint32_t virtual_newline_count;
+    uint32_t total_virtual_newline_count;
 
     int32_t height;
 
