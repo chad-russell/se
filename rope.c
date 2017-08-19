@@ -21,10 +21,10 @@ rope_byte_weight(struct rope_t *rn);
 int64_t
 rope_char_weight(struct rope_t *rn);
 
-uint32_t
+int64_t
 rope_line_break_weight(struct rope_t *rn);
 
-uint32_t
+int64_t
 count_newlines_length(const char *str, int64_t i, struct line_helper_t *line_helper);
 
 void
@@ -256,7 +256,7 @@ rope_total_line_break_length(struct rope_t *rn)
     return rn->total_line_break_weight;
 }
 
-uint32_t
+int64_t
 rope_total_line_break_weight(struct rope_t *rn)
 {
     if (rn == NULL) { return 0; }
@@ -539,7 +539,7 @@ rope_char_weight(struct rope_t *rn)
     return rope_total_char_length(rn->left);
 }
 
-uint32_t
+int64_t
 rope_line_break_weight(struct rope_t *rn)
 {
     if (rn == NULL) {
@@ -553,22 +553,22 @@ rope_line_break_weight(struct rope_t *rn)
     return rope_total_line_break_length(rn->left);
 }
 
-uint32_t
+int64_t
 count_newlines(const char *str)
 {
     if (str == NULL) { return 0; }
-    uint32_t newline_count = 0;
+    int64_t newline_count = 0;
     for (const char *c = str; *c != 0; c++) {
         if (*c == '\n') { newline_count += 1; }
     }
     return newline_count;
 }
 
-uint32_t
+int64_t
 count_newlines_length(const char *str, int64_t i, struct line_helper_t *line_helper)
 {
     if (str == NULL) { return 0; }
-    uint32_t newline_count = 0;
+    int64_t newline_count = 0;
 
     int64_t length = 0;
 

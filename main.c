@@ -15,17 +15,18 @@ main()
 //    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Desktop/hello.txt");
     editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Desktop/shakespeare.txt");
 
-//    for (uint32_t i = 0; i < 300000; i++) {
-//        editor_buffer_insert(buffer, "a");
-//        editor_buffer_delete(buffer);
-//    }
-
-//    editor_buffer_destroy(buffer);
+    editor_buffer_set_cursor_point(buffer, 1, 0);
+    editor_buffer_insert(buffer, "\n");
 
     // print buffer
 //    for (int64_t i = 0; i < editor_buffer_get_line_count(buffer); i++) {
+    for (int64_t i = 0; i < 4; i++) {
+        int64_t length = editor_buffer_get_line_length(buffer, i);
+//        buf_print_fmt("%str\n", editor_buffer_get_text_between_points(buffer, i, 0, i, length)->bytes);
+
 //        buf_print_fmt("%str", editor_buffer_get_text_between_points(buffer, i, 0, i + 1, 0)->bytes);
-//    }
+        buf_print_fmt("%i64: %i64\n", i, length);
+    }
 
     return 0;
 }

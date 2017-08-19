@@ -17,7 +17,7 @@ rope_leaf_init_lines(const char *text, struct line_helper_t *line_helper);
 struct rope_t *
 rope_shallow_copy(struct rope_t *rn);
 
-uint32_t
+int64_t
 count_newlines(const char *str);
 
 // methods
@@ -48,7 +48,7 @@ rope_total_byte_weight(struct rope_t *rn);
 int64_t
 rope_total_line_break_length(struct rope_t *rn);
 
-uint32_t
+int64_t
 rope_total_line_break_weight(struct rope_t *rn);
 
 int64_t
