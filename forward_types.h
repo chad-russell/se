@@ -3,8 +3,8 @@
 
 #include "vector.h"
 
-#define UNDO_BUFFER_SIZE 10
-#define GLOBAL_UNDO_BUFFER_SIZE 10
+#define UNDO_BUFFER_SIZE 1000
+#define GLOBAL_UNDO_BUFFER_SIZE 10000
 
 struct rope_t {
     int64_t byte_weight;

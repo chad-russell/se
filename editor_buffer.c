@@ -248,9 +248,7 @@ editor_buffer_open_file(struct editor_buffer_t editor_buffer, int64_t virtual_li
 
     undo_stack_append(editor_buffer, screen);
 
-    if (editor_buffer.file_path != NULL) {
-        free(editor_buffer.file_path);
-    }
+    // todo(chad): @Leak
     *editor_buffer.file_path = *buf_init_fmt("%str", file_path);
 }
 
@@ -1152,7 +1150,7 @@ editor_buffer_set_cursor_point_to_end_of_line_virtual(struct editor_buffer_t edi
 {
     for (int64_t i = 0; i < editor_buffer.current_screen->cursor_infos->length; i++) {
         int64_t row = editor_buffer_get_cursor_row_virtual(editor_buffer, i, virtual_line_length);
-        int64_t line_length = editor_buffer_get_line_length_virtual(editor_buffer, i, virtual_line_length);
+        int64_t line_length = editor_buffer_get_line_length_virtual(editor_buffer, row, virtual_line_length);
         editor_buffer_set_cursor_point_virtual_for_cursor_index(editor_buffer, i, row, line_length, virtual_line_length);
     }
 

@@ -330,8 +330,8 @@ line_rope_insert(struct line_rope_t *rn, int64_t i, int64_t line_length)
     struct line_rope_t *split_right;
     line_rope_split_at_char(rn, i, &split_left, &split_right);
 
-    SE_ASSERT(split_left->total_char_weight == i);
-    SE_ASSERT(split_right->total_char_weight == rn->total_char_weight - i);
+//    SE_ASSERT(split_left->total_char_weight == i);
+//    SE_ASSERT(split_right->total_char_weight == rn->total_char_weight - i);
 
     struct line_rope_t *insert = line_rope_leaf_init(line_length, rn->virtual_line_length);
 
