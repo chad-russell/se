@@ -96,16 +96,21 @@ line_rope_set_right(struct line_rope_t *target, struct line_rope_t *new_right)
     SE_ASSERT(!target->is_leaf);
 
     if (new_right == target->right) { return; }
-    if (new_right == NULL) { return; }
 
     line_rope_dec_rc(target->right);
     target->right = new_right;
     line_rope_inc_rc(new_right);
 
-    line_rope_total_line_length(target);
-    line_rope_total_virtual_newline_weight(target);
-    line_rope_total_char_weight(target);
     line_rope_height(target);
+
+    target->line_length = line_rope_line_length(target);
+    line_rope_total_line_length(target);
+
+    target->char_weight = line_rope_char_weight(target);
+    line_rope_total_char_weight(target);
+
+    target->virtual_newline_count = line_rope_virtual_newline_weight(target);
+    line_rope_total_virtual_newline_weight(target);
 }
 
 void
@@ -120,6 +125,8 @@ line_rope_set_left(struct line_rope_t *target, struct line_rope_t *new_left)
     line_rope_dec_rc(target->left);
     target->left = new_left;
     line_rope_inc_rc(new_left);
+
+    line_rope_height(target);
 
     target->line_length = line_rope_line_length(target);
     line_rope_total_line_length(target);
@@ -323,9 +330,12 @@ line_rope_insert(struct line_rope_t *rn, int64_t i, int64_t line_length)
     struct line_rope_t *split_right;
     line_rope_split_at_char(rn, i, &split_left, &split_right);
 
-    struct line_rope_t *new_right = line_rope_leaf_init(line_length, rn->virtual_line_length);
+    SE_ASSERT(split_left->total_char_weight == i);
+    SE_ASSERT(split_right->total_char_weight == rn->total_char_weight - i);
 
-    struct line_rope_t *combined_left = line_rope_concat(split_left, new_right);
+    struct line_rope_t *insert = line_rope_leaf_init(line_length, rn->virtual_line_length);
+
+    struct line_rope_t *combined_left = line_rope_concat(split_left, insert);
     struct line_rope_t *cat = line_rope_concat(combined_left, split_right);
 
     return cat;
@@ -398,13 +408,12 @@ line_rope_total_line_length(struct line_rope_t *rn)
 
     if (rn->left != NULL && rn->right != NULL) {
         rn->total_line_length = rn->left->total_line_length + rn->right->total_line_length;
-    }
-    else if (rn->left != NULL) {
+    } else if (rn->left != NULL) {
         rn->total_line_length = rn->left->total_line_length;
     } else if (rn->right != NULL) {
         rn->total_line_length = rn->right->total_line_length;
     } else {
-        rn->total_line_length = 0;
+        rn->total_line_length = rn->line_length;
     }
 
     return rn->total_line_length;

@@ -545,7 +545,7 @@ editor_buffer_delete_possibly_only_selection(struct editor_buffer_t editor_buffe
 
         int64_t end_row = cursor_info->row;
         if (end_row + lines_deleted != cursor_info->selection_row) {
-            struct line_rope_t *new_lines = line_rope_delete(edited_screen.lines, end_row + lines_deleted, cursor_info->selection_row + 1);
+            struct line_rope_t *new_lines = line_rope_delete(edited_screen.lines, end_row + lines_deleted, cursor_info->selection_row);
             line_rope_free(edited_screen.lines);
 
             lines_deleted += cursor_info->selection_row - end_row;
