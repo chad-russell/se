@@ -114,6 +114,9 @@ void
 editor_buffer_set_cursor_point_for_cursor_index(struct editor_buffer_t editor_buffer, int64_t cursor_index, int64_t row, int64_t col);
 
 void
+editor_buffer_set_selection_point_for_cursor_index(struct editor_buffer_t editor_buffer, int64_t cursor_index, int64_t row, int64_t col);
+
+void
 editor_buffer_set_cursor_point(struct editor_buffer_t editor_buffer, int64_t row, int64_t col);
 
 void
@@ -138,6 +141,9 @@ void
 editor_buffer_clear_cursors(struct editor_buffer_t editor_buffer);
 
 void
+editor_buffer_make_single_cursor(struct editor_buffer_t editor_buffer);
+
+void
 editor_buffer_set_cursor_pos_relative(struct editor_buffer_t editor_buffer, int64_t relative_cursor);
 
 int64_t
@@ -151,6 +157,9 @@ editor_buffer_cursor_is_selection(struct editor_buffer_t editor_buffer, int64_t 
 
 void
 editor_buffer_set_cursor_is_selection(struct editor_buffer_t editor_buffer, int8_t cursor_is_selection);
+
+void
+editor_buffer_set_cursor_is_selection_for_cursor_index(struct editor_buffer_t editor_buffer, int64_t cursor_idx, int8_t cursor_is_selection);
 
 int64_t
 editor_buffer_get_cursor_selection_start_row(struct editor_buffer_t editor_buffer, int64_t cursor_idx);
@@ -169,5 +178,26 @@ editor_buffer_free_buf(struct buf_t *buf);
 
 void
 ensure_virtual_newline_length(struct line_rope_t *rn, int64_t virtual_line_length);
+
+int64_t
+editor_buffer_search_forward(struct editor_buffer_t editor_buffer, const char *search, int64_t start_char);
+
+int64_t
+editor_buffer_search_backward(struct editor_buffer_t editor_buffer, const char *search, int64_t start_char);
+
+void
+editor_buffer_set_cursor_point_to_start_of_next_word(struct editor_buffer_t editor_buffer);
+
+void
+editor_buffer_set_cursor_point_to_end_of_current_word(struct editor_buffer_t editor_buffer);
+
+void
+editor_buffer_set_cursor_point_to_start_of_previous_word(struct editor_buffer_t editor_buffer);
+
+void
+editor_buffer_copy_last_undo(struct editor_buffer_t editor_buffer);
+
+void
+editor_buffer_set_saves_to_undo(struct editor_buffer_t editor_buffer, int8_t saves);
 
 #endif //SE_EDITOR_BUFFER_H

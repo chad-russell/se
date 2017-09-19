@@ -5,6 +5,7 @@
 
 #include "util.h"
 
+// todo(chad): @Performance: make this a table lookup?
 int32_t
 bytes_in_codepoint_utf8(char first_byte)
 {
@@ -20,6 +21,8 @@ bytes_in_codepoint_utf8(char first_byte)
     if (first_byte >= '\xF0' && first_byte <= '\xF4') {
         return 4;
     }
+//    return 1;
+
     SE_UNREACHABLE();
 }
 

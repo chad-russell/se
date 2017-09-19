@@ -26,6 +26,9 @@ editor_buffer_create(uint32_t virtual_line_length)
     editor_buffer.global_undo_idx = se_alloc(1, sizeof(int64_t));
     *editor_buffer.global_undo_idx = 0;
 
+    editor_buffer.save_to_undo = se_alloc(1, sizeof(int8_t));
+    *editor_buffer.save_to_undo = 1;
+
     editor_buffer.current_screen = se_alloc(1, sizeof(struct editor_screen_t));
 
     struct editor_screen_t screen;
@@ -299,13 +302,6 @@ editor_buffer_has_file_path(struct editor_buffer_t editor_buffer)
 struct cursor_info_t *
 possibly_merge_cursors(struct cursor_info_t *i, struct cursor_info_t *j)
 {
-    if (i->char_pos == i->selection_char_pos) {
-        i->is_selection = 0;
-    }
-    if (j->char_pos == j->selection_char_pos) {
-        j->is_selection = 0;
-    }
-
     if (i->is_selection && j->is_selection) {
         int64_t i_end_selection = i->char_pos;
         int64_t j_start_selection = j->selection_char_pos;
@@ -313,19 +309,15 @@ possibly_merge_cursors(struct cursor_info_t *i, struct cursor_info_t *j)
         int8_t i_is_forward = 0;
         int8_t j_is_forward = 0;
 
-        SE_ASSERT(i->char_pos != i->selection_char_pos);
         if (i->char_pos < i->selection_char_pos) {
             i_is_forward = 1;
             i_end_selection = i->selection_char_pos;
         }
 
-        SE_ASSERT(j->char_pos != j->selection_char_pos);
         if (j->char_pos < j->selection_char_pos) {
             j_is_forward = 1;
             j_start_selection = j->char_pos;
         }
-
-//        SE_ASSERT(i_is_forward == j_is_forward);
 
         if (i_end_selection <= j_start_selection) {
             return NULL;
@@ -496,6 +488,10 @@ editor_buffer_delete_possibly_only_selection(struct editor_buffer_t editor_buffe
             cursor_info->selection_char_pos = 0;
             continue;
         }
+        
+        if (delete_from == delete_to) {
+            return;
+        }
 
         struct rope_t *edited = rope_delete(edited_screen.text, delete_from, delete_to);
         if (edited == NULL) {
@@ -570,14 +566,6 @@ editor_buffer_delete_possibly_only_selection(struct editor_buffer_t editor_buffe
             struct line_rope_t *saved_lines = edited_screen.lines;
             edited_screen.lines = line_rope_replace_char_at(edited_screen.lines, end_row, new_line_length);
             line_rope_free(saved_lines);
-
-//            for (int64_t j = end_row; j <= cursor_info->selection_row; j++) {
-//                int64_t new_line_length = editor_screen_calculate_line_length(edited_screen, j);
-//
-//                struct line_rope_t *saved_lines = edited_screen.lines;
-//                edited_screen.lines = line_rope_replace_char_at(edited_screen.lines, j, new_line_length);
-//                line_rope_free(saved_lines);
-//            }
         }
     }
 
@@ -824,20 +812,81 @@ editor_buffer_get_char_number_at_line(struct editor_buffer_t editor_buffer, int6
     return rope_char_number_at_line(screen.text, i);
 }
 
+// SAVED -- DELETE WHEN THE OTHER ONE IS DEFINITELY WORKING
+//struct buf_t *
+//editor_buffer_get_text_between_characters(struct editor_buffer_t editor_buffer, int64_t start, int64_t end)
+//{
+//    struct rope_t *r = editor_buffer.current_screen->text;
+//
+//    struct buf_t *buf = buf_init(end - start + 1);
+//    for (int64_t i = start; i < end; i++) {
+//        const char *char_at = rope_char_at(r, i);
+//
+//        // char_at will only be null if we are looking for a character past the end of the rope
+//        if (char_at != NULL) {
+//            buf_write_bytes(buf, char_at, bytes_in_codepoint_utf8(*char_at));
+//        }
+//    }
+//
+//    return buf;
+//}
+
+int64_t
+editor_buffer_add_char_incremental(struct rope_t *rn, int64_t start, int64_t end, struct buf_t *buf) {
+    if (rn->is_leaf) {
+        if (rn->char_weight - 1 < start) {
+            return 0;
+        }
+
+        int64_t byte_offset = 0;
+        for (int64_t j = 0; j < start; j++) {
+            byte_offset += bytes_in_codepoint_utf8(*(rn->str_buf->bytes + byte_offset));
+        }
+
+        // write as many chars as we can
+        int64_t j = start;
+        while (j < end && byte_offset < rn->str_buf->length) {
+            int64_t char_size = bytes_in_codepoint_utf8(*(rn->str_buf->bytes + byte_offset));
+            buf_write_bytes(buf, rn->str_buf->bytes + byte_offset, char_size);
+            byte_offset += char_size;
+            j += 1;
+        }
+
+        // return how many chars we wrote
+        return j - start;
+    }
+
+    if (rn->char_weight - 1 < start) {
+        return editor_buffer_add_char_incremental(rn->right, start - rn->char_weight, end - rn->char_weight, buf);
+    } else {
+        if (rn->left != NULL) {
+            int64_t added_from_left = editor_buffer_add_char_incremental(rn->left, start, end, buf);
+            if (rn->right != NULL && start + added_from_left < end) {
+                int64_t added_from_right = editor_buffer_add_char_incremental(rn->right, start + added_from_left - rn->char_weight, end - rn->char_weight, buf);
+                return added_from_left + added_from_right;
+            }
+            return added_from_left;
+        }
+        return 0;
+    }
+}
+
 struct buf_t *
 editor_buffer_get_text_between_characters(struct editor_buffer_t editor_buffer, int64_t start, int64_t end)
 {
-    struct rope_t *r = editor_buffer.current_screen->text;
+    struct rope_t *rn = editor_buffer.current_screen->text;
 
     struct buf_t *buf = buf_init(end - start + 1);
-    for (int64_t i = start; i < end; i++) {
-        const char *char_at = rope_char_at(r, i);
 
-        // char_at will only be null if we are looking for a character past the end of the rope
-        if (char_at != NULL) {
-            buf_write_bytes(buf, char_at, bytes_in_codepoint_utf8(*char_at));
-        }
-    }
+    editor_buffer_add_char_incremental(rn, start, end, buf);
+//    int64_t i = start;
+//    while (i < end) {
+//        int64_t added = editor_buffer_add_char_incremental(rn, i, end, buf);
+//        if (added == 0) {
+//            break;
+//        }
+//        i += added;
+//    }
 
     return buf;
 }
@@ -939,8 +988,7 @@ editor_buffer_get_virtual_cursor_row_for_point(struct editor_buffer_t editor_buf
     int64_t virtual_row = virtual_newlines_before_current_line + extra_from_cols;
 
     int64_t current_line_length = editor_buffer_get_line_length(editor_buffer, row);
-    int32_t last_line = editor_buffer_get_line_count(editor_buffer) == row + 1;
-    if (!last_line && col == current_line_length && col == virtual_line_length) {
+    if (col != 0 && col % current_line_length == 0 && col % virtual_line_length == 0) {
         return virtual_row - 1;
     }
 
@@ -968,8 +1016,7 @@ int64_t editor_buffer_get_virtual_cursor_col_for_point(struct editor_buffer_t ed
     ensure_virtual_newline_length(editor_buffer.current_screen->lines, virtual_line_length);
 
     int64_t current_line_length = editor_buffer_get_line_length(editor_buffer, row);
-    int32_t last_line = editor_buffer_get_line_count(editor_buffer) == row + 1;
-    if (!last_line && col == current_line_length && col == virtual_line_length) {
+    if (col != 0 && col % current_line_length == 0 && col % virtual_line_length == 0) {
         return current_line_length;
     }
 
@@ -1108,6 +1155,7 @@ editor_buffer_set_cursor_point_for_cursor_index(struct editor_buffer_t editor_bu
     int64_t row_length = end_of_row - start_for_row;
 
     int64_t computed_col = row_length < col ? row_length : col;
+    if (computed_col < 0) { computed_col = 0; }
 
     cursor_info->char_pos = start_for_row + computed_col;
     cursor_info->row = computed_row;
@@ -1227,6 +1275,12 @@ editor_buffer_clear_cursors(struct editor_buffer_t editor_buffer)
 }
 
 void
+editor_buffer_make_single_cursor(struct editor_buffer_t editor_buffer)
+{
+    editor_buffer.current_screen->cursor_infos->length = 1;
+}
+
+void
 editor_buffer_set_cursor_pos_relative(struct editor_buffer_t editor_buffer, int64_t relative_cursor)
 {
     for (int64_t i = 0; i < editor_buffer.current_screen->cursor_infos->length; i++) {
@@ -1291,16 +1345,22 @@ void
 editor_buffer_set_cursor_is_selection(struct editor_buffer_t editor_buffer, int8_t cursor_is_selection)
 {
     for (int64_t i = 0; i < editor_buffer.current_screen->cursor_infos->length; i++) {
-        struct cursor_info_t *cursor_info = (struct cursor_info_t *) vector_at(editor_buffer.current_screen->cursor_infos, i);
-
-        if (!cursor_info->is_selection && cursor_is_selection) {
-            cursor_info->selection_char_pos = cursor_info->char_pos;
-            cursor_info->selection_row = cursor_info->row;
-            cursor_info->selection_col = cursor_info->col;
-        }
-
-        cursor_info->is_selection = cursor_is_selection;
+        editor_buffer_set_cursor_is_selection_for_cursor_index(editor_buffer, i, cursor_is_selection);
     }
+}
+
+void
+editor_buffer_set_cursor_is_selection_for_cursor_index(struct editor_buffer_t editor_buffer, int64_t cursor_idx, int8_t cursor_is_selection)
+{
+    struct cursor_info_t *cursor_info = (struct cursor_info_t *) vector_at(editor_buffer.current_screen->cursor_infos, cursor_idx);
+
+    if (!cursor_info->is_selection && cursor_is_selection) {
+        cursor_info->selection_char_pos = cursor_info->char_pos;
+        cursor_info->selection_row = cursor_info->row;
+        cursor_info->selection_col = cursor_info->col;
+    }
+
+    cursor_info->is_selection = cursor_is_selection;
 }
 
 int64_t
@@ -1348,4 +1408,255 @@ editor_screen_set_line_and_col_for_char_pos(struct cursor_info_t *cursor_info, s
     int64_t row_start = rope_char_number_at_line(text, row);
     int64_t col = cursor_info->char_pos - row_start;
     cursor_info->col = col;
+}
+
+void
+kmp_prefix(const char *W, int64_t T[])
+{
+    int64_t pos = 1;
+    int64_t cnd = 0;
+    T[0] = -1;
+
+    int64_t len_W = unicode_strlen(W);
+
+    while (pos < len_W) {
+        if (W[pos] == W[cnd]) {
+            T[pos] = T[cnd];
+            pos += 1;
+            cnd += 1;
+        } else {
+            T[pos] = cnd;
+            cnd = T[cnd];
+
+            while (cnd >= 0 && W[pos] != W[cnd]) {
+                cnd = T[cnd];
+            }
+
+            pos += 1;
+            cnd += 1;
+        }
+    }
+
+    T[pos] = cnd;
+}
+
+int64_t
+kmp_search(struct editor_buffer_t editor_buffer, const char *W, int64_t start_char)
+{
+    // the beginning of the current match in S
+    int64_t m = start_char;
+
+    // the position of the current character in W
+    int64_t i = 0;
+
+    int64_t len_S = rope_total_byte_length(editor_buffer.current_screen->text);
+    int64_t len_W = (int64_t) strlen(W);
+
+    // the table
+    int64_t T[len_W];
+    kmp_prefix(W, T);
+
+    int64_t byte_at;
+    struct rope_t *incremental_leaf = NULL;
+
+    while (m + i < len_S) {
+        incremental_leaf = rope_byte_at_incremental(editor_buffer.current_screen->text, incremental_leaf, m + i, &byte_at);
+
+        if (incremental_leaf != NULL && byte_at != -1 && W[i] == *(incremental_leaf->str_buf->bytes + byte_at)) {
+            i += 1;
+            if (i == len_W) {
+                // occurrence found!
+                return m;
+            }
+        } else {
+            if (T[i] > -1) {
+                m = m + i - T[i];
+                i = T[i];
+            } else {
+                m = m + i + 1;
+                i = 0;
+            }
+        }
+    }
+
+    return -1;
+}
+
+int64_t
+kmp_search_backward(struct editor_buffer_t editor_buffer, const char *W, int64_t start_char)
+{
+    // the beginning of the current match in S
+    int64_t m = start_char;
+
+    int64_t len_W = (int64_t) strlen(W);
+
+    // we need to reverse the string, since if you're searching backward character by character you are actually looking
+    // for the reverse string :/
+    char *WR = se_alloc(len_W, sizeof(char));
+    for (int64_t i = 0; i < len_W; i++) {
+        WR[i] = W[len_W - i - 1];
+    }
+
+    // the position of the current character in W
+    int64_t i = 0;
+
+    // the table
+    int64_t T[len_W];
+    kmp_prefix(WR, T);
+
+    int64_t byte_at;
+    struct rope_t *incremental_leaf = NULL;
+
+    while (m - i >= 0) {
+        incremental_leaf = rope_byte_at_incremental(editor_buffer.current_screen->text, incremental_leaf, m - i, &byte_at);
+
+        if (incremental_leaf != NULL && byte_at != -1 && WR[i] == *(incremental_leaf->str_buf->bytes + byte_at)) {
+            i += 1;
+            if (i == len_W) {
+                // occurrence found!
+                return m - len_W + 1;
+            }
+        } else {
+            if (T[i] > -1) {
+                m = m - i - T[i];
+                i = T[i];
+            } else {
+                m = m - i - 1;
+                i = 0;
+            }
+        }
+    }
+
+    free(WR);
+
+    return -1;
+}
+
+int64_t
+editor_buffer_search_forward(struct editor_buffer_t editor_buffer, const char *search, int64_t start_char)
+{
+    int64_t byte_offset = kmp_search(editor_buffer, search, start_char);
+    if (byte_offset == -1) { return -1; }
+    return rope_char_for_byte_at(editor_buffer.current_screen->text, byte_offset);
+}
+
+int64_t
+editor_buffer_search_backward(struct editor_buffer_t editor_buffer, const char *search, int64_t start_char)
+{
+    int64_t byte_offset = kmp_search_backward(editor_buffer, search, start_char);
+    if (byte_offset == -1) { return -1; }
+    return rope_char_for_byte_at(editor_buffer.current_screen->text, byte_offset);
+}
+
+int8_t
+is_word_breaking_char(char c)
+{
+    // todo(chad): make word boundaries configurable, the concept of 'word' should include more than just this stuff!!!
+    return c == ' ' || c == '\n' || c == '\t';
+}
+
+// todo(chad): do we need to optimize all the rope_char_at stuff? Words are probably very short for the most part, but still...
+
+void
+editor_buffer_set_cursor_point_to_start_of_next_word(struct editor_buffer_t editor_buffer)
+{
+    for (int64_t i = 0; i < editor_buffer.current_screen->cursor_infos->length; i++) {
+        struct cursor_info_t cursor = *((struct cursor_info_t *) vector_at(editor_buffer.current_screen->cursor_infos, i));
+        int64_t current_char = cursor.char_pos;
+        int64_t max_char = editor_buffer_get_char_count(editor_buffer);
+
+        int8_t found_start = 0;
+        while (current_char < max_char) {
+            const char *char_at = rope_char_at(editor_buffer.current_screen->text, current_char);
+
+            if (char_at != NULL && is_word_breaking_char(*char_at)) {
+                // find the next non-space
+                while (char_at != NULL && is_word_breaking_char(*char_at) && current_char < max_char) {
+                    current_char += 1;
+                    char_at = rope_char_at(editor_buffer.current_screen->text, current_char);
+                }
+
+                editor_buffer_set_cursor_pos_for_cursor_index(editor_buffer, i, current_char);
+                found_start = 1;
+                break;
+            }
+
+            current_char += 1;
+        }
+
+        if (!found_start) {
+            editor_buffer_set_cursor_pos_for_cursor_index(editor_buffer, i, current_char);
+        }
+    }
+}
+
+void
+editor_buffer_set_cursor_point_to_end_of_current_word(struct editor_buffer_t editor_buffer)
+{
+    for (int64_t i = 0; i < editor_buffer.current_screen->cursor_infos->length; i++) {
+        struct cursor_info_t cursor = *((struct cursor_info_t *) vector_at(editor_buffer.current_screen->cursor_infos, i));
+        int64_t current_char = cursor.char_pos + 1;
+        int64_t max_char = editor_buffer_get_char_count(editor_buffer);
+
+        const char *char_at = NULL;
+        if (current_char < max_char) {
+            char_at = rope_char_at(editor_buffer.current_screen->text, current_char);
+        }
+
+        // find the next non-space
+        while (current_char < max_char && char_at != NULL && is_word_breaking_char(*char_at)) {
+            current_char += 1;
+            char_at = rope_char_at(editor_buffer.current_screen->text, current_char);
+        }
+
+        int8_t found_end = 0;
+        while (current_char < max_char) {
+            char_at = rope_char_at(editor_buffer.current_screen->text, current_char);
+
+            if (char_at != NULL && is_word_breaking_char(*char_at)) {
+                editor_buffer_set_cursor_pos_for_cursor_index(editor_buffer, i, current_char);
+                found_end = 1;
+                break;
+            }
+
+            current_char += 1;
+        }
+
+        if (!found_end) {
+            editor_buffer_set_cursor_pos_for_cursor_index(editor_buffer, i, current_char);
+        }
+    }
+}
+
+void
+editor_buffer_set_cursor_point_to_start_of_previous_word(struct editor_buffer_t editor_buffer)
+{
+    for (int64_t i = 0; i < editor_buffer.current_screen->cursor_infos->length; i++) {
+        struct cursor_info_t cursor = *((struct cursor_info_t *) vector_at(editor_buffer.current_screen->cursor_infos, i));
+        int64_t current_char = cursor.char_pos - 1;
+
+        const char *char_at = rope_char_at(editor_buffer.current_screen->text, current_char);
+        if (char_at != NULL && is_word_breaking_char(*char_at)) {
+            while (current_char > 0 && is_word_breaking_char(*char_at)) {
+                char_at = rope_char_at(editor_buffer.current_screen->text, current_char);
+                current_char -= 1;
+            }
+        }
+
+        int8_t found_word = 0;
+        while (current_char > 0) {
+            char_at = rope_char_at(editor_buffer.current_screen->text, current_char);
+
+            if (char_at != NULL && is_word_breaking_char(*char_at)) {
+                editor_buffer_set_cursor_pos_for_cursor_index(editor_buffer, i, current_char + 1);
+                found_word = 1;
+                break;
+            }
+
+            current_char -= 1;
+        }
+        if (!found_word) {
+            editor_buffer_set_cursor_pos_for_cursor_index(editor_buffer, i, current_char);
+        }
+    }
 }

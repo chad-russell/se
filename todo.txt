@@ -1,21 +1,56 @@
-TODO(chad): 
+TODO:
   -- FEATURES
-    - find/replace
-      - will need to be able to efficiently iterate through leaf nodes in order
-    - move to next/previous word
-        - probably make it configurable as to what counts as a 'word'
-    - move to next/previous blank line
-    - indent / unindent line
-    - keybindings, modal editing
+    - more vim
+      - di(
+      - di)
+      - di{
+      - di}
+      - di[
+      - di]
+      - di<
+      - di>
+      - daw 
+      - dae
+      - dap
+      - da"
+      - da'
+      - da(
+      - da)
+      - da{
+      - da}
+      - da[
+      - da]
+      - da<
+      - da>
+      - make ^ go to the first non-space character and 0 go to the first character of a line
+    - more search stuff
+      - case insensitive
+      - replace
+        - replace next
+        - replace all
+      - find next and continue highlighting (like cmd+d in sublime)
+      - find (and highlight) all
+    - commands
+      - search (and find, replace, etc)
+      - open
+      - save
+    - page leaf nodes to/from disk
+      - even when reading -- basically we should be able to open a 10GB file without using more than a finite amount of memory
+    - plugin architecture, user-created commands
     - tokenization (possibly supporting custom api?) and highlighting of grammars
     - configure tabs/spaces
+    - make what a 'word' is in move-by-words configurable
     - watch open files for changes (?)
       - indicate when a file has changed on disk since we started editing it
       - warn when going to save a file but it has changed since we've opened it
       - maybe just provide a 'reload from disk' command
       - test on json
-    - selection through click/drag
-    - plugins, user-created commands
+    - relative line numbers
+      - how to resolve with multiple cursors??
+    - autocomplete
+    - file tree
+    - marks (?)
+    - folding (?)
     - support other file encodings
       - UTF-16
         - Use BOM if applicable to determine file encoding (and, of course, byte order)
@@ -26,4 +61,3 @@ TODO(chad):
 
   -- PERFORMANCE
     - delete can be made faster if we know we're not deleting a newline
-    - how to efficiently make sure that the cursor is always visible?

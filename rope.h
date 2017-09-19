@@ -36,11 +36,20 @@ rope_char_number_at_line(struct rope_t *rn, int64_t i);
 const char *
 rope_byte_at(struct rope_t *rn, int64_t i);
 
+struct rope_t *
+rope_byte_at_incremental(struct rope_t *rn, struct rope_t *leaf, int64_t i, int64_t *out);
+
+int64_t
+rope_char_for_byte_at(struct rope_t *rn, int64_t i);
+
 int64_t
 rope_total_char_length(struct rope_t *rn);
 
 int64_t
 rope_total_char_weight(struct rope_t *rn);
+
+int64_t
+rope_total_byte_length(struct rope_t *rn);
 
 int64_t
 rope_total_byte_weight(struct rope_t *rn);

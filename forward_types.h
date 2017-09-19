@@ -29,7 +29,6 @@ struct rope_t {
     };
 };
 
-// todo(chad): make most (all?) of these into int64_t instead of int64_t
 struct line_rope_t {
     // how long is this line?
     uint32_t line_length;
@@ -81,6 +80,8 @@ struct editor_buffer_t {
     int64_t *global_undo_idx;
 
     struct editor_screen_t *current_screen;
+
+    int8_t *save_to_undo;
 };
 
 struct line_helper_t {

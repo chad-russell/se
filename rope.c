@@ -8,8 +8,8 @@
 #include "circular_buffer.h"
 #include "line_rope.h"
 
-#define SPLIT_THRESHOLD 1024
-#define COPY_THRESHOLD 1024
+#define SPLIT_THRESHOLD 2048 * 16
+#define COPY_THRESHOLD 2048 * 16
 
 // forward declarations
 struct rope_t *
@@ -219,6 +219,67 @@ rope_byte_at(struct rope_t *rn, int64_t i)
     }
 }
 
+struct rope_t *
+rope_byte_at_incremental(struct rope_t *rn, struct rope_t *leaf, int64_t i, int64_t *out)
+{
+    if (leaf != NULL) {
+        SE_ASSERT(leaf->is_leaf);
+
+        if (leaf->byte_weight - 1 >= i) {
+            *out = i;
+            return leaf;
+        }
+    }
+
+    if (rn->is_leaf) {
+        if (rn->byte_weight - 1 < i) {
+            *out = -1;
+        }
+        *out = i;
+        return rn;
+    }
+    if (rn->byte_weight - 1 < i) {
+        return rope_byte_at_incremental(rn->right, NULL, i - rn->byte_weight, out);
+    } else {
+        if (rn->left != NULL) {
+            return rope_byte_at_incremental(rn->left, NULL, i, out);
+        }
+        *out = -1;
+    }
+
+    *out = -1;
+    return NULL;
+}
+
+int64_t
+rope_char_for_byte_at(struct rope_t *rn, int64_t i)
+{
+    if (rn->is_leaf) {
+        if (rn->byte_weight - 1 < i) {
+            return 0;
+        }
+
+        int64_t char_ = 0;
+        int64_t byte = 0;
+        const char *bytes = rn->str_buf->bytes;
+        while (byte < i) {
+            byte += bytes_in_codepoint_utf8(*(bytes + byte));
+            char_ += 1;
+        }
+
+        return char_;
+    }
+
+    if (rn->byte_weight - 1 < i) {
+        return rn->char_weight + rope_char_for_byte_at(rn->right, i - rn->byte_weight);
+    } else {
+        if (rn->left != NULL) {
+            return rope_char_for_byte_at(rn->left, i);
+        }
+        return 0;
+    }
+}
+
 int64_t
 rope_total_char_length(struct rope_t *rn)
 {
@@ -369,39 +430,57 @@ rope_free(struct rope_t *rn)
 }
 
 void
+screen_free(struct editor_screen_t *screen)
+{
+    if (screen == NULL) { return; }
+
+    int8_t freeing = screen->text != NULL
+                     && screen->lines != NULL
+                     && screen->text->rc == 1
+                     && screen->lines->rc == 1;
+
+    rope_dec_rc(screen->text);
+    line_rope_dec_rc(screen->lines);
+
+    if (freeing && screen->cursor_infos != NULL) {
+        vector_free(screen->cursor_infos);
+    }
+}
+
+void
 undo_stack_append(struct editor_buffer_t editor_buffer, struct editor_screen_t screen)
 {
-    if (*editor_buffer.undo_idx + 1 < editor_buffer.undo_buffer->length) {
-        for (int64_t i = *editor_buffer.undo_idx + 1; i < editor_buffer.undo_buffer->length; i++) {
-            struct editor_screen_t *truncated_screen = circular_buffer_at(editor_buffer.undo_buffer, i);
-            rope_dec_rc(truncated_screen->text);
-            line_rope_dec_rc(truncated_screen->lines);
+    // truncate the length of the buffer if necessary
+    // if we are not saving a new undo, then we're overwriting an existing one
+    // meaning the length does not change
+    if (*editor_buffer.save_to_undo) {
+        int64_t next_index = *editor_buffer.undo_idx + 1;
+        if (next_index < editor_buffer.undo_buffer->length) {
+            for (int64_t i = next_index; i < editor_buffer.undo_buffer->length; i++) {
+                struct editor_screen_t *truncated_screen = circular_buffer_at(editor_buffer.undo_buffer, i);
+                screen_free(truncated_screen);
 
-            // nullify this so that next time we come to it we don't try to free garbage rope data
-            circular_buffer_set_index_null(editor_buffer.undo_buffer, i);
+                // nullify this so that next time we come to it we don't try to free garbage rope data
+                circular_buffer_set_index_null(editor_buffer.undo_buffer, i);
+            }
+            circular_buffer_truncate(editor_buffer.undo_buffer, *editor_buffer.undo_idx);
         }
-        circular_buffer_truncate(editor_buffer.undo_buffer, *editor_buffer.undo_idx);
     }
 
     // if we are overwriting something, free it first
-    struct editor_screen_t *screen_to_overwrite = circular_buffer_next(editor_buffer.undo_buffer);
-    if (screen_to_overwrite != NULL) {
-        if (screen.text != NULL) {
-            rope_dec_rc(screen_to_overwrite->text);
-        }
-
-        if (screen_to_overwrite->lines != NULL) {
-            line_rope_dec_rc(screen_to_overwrite->lines);
-        }
-
-        // nullify this so that the next time we come to it we don't try to free garbage rope data
-        circular_buffer_set_next_write_index_null(editor_buffer.undo_buffer);
-    }
+    struct editor_screen_t *screen_to_overwrite = *editor_buffer.save_to_undo ?
+                                                  circular_buffer_next(editor_buffer.undo_buffer) :
+                                                  circular_buffer_at_end(editor_buffer.undo_buffer);
+    screen_free(screen_to_overwrite);
 
     rope_inc_rc(screen.text);
     line_rope_inc_rc(screen.lines);
 
-    circular_buffer_append(editor_buffer.undo_buffer, &screen);
+    if (*editor_buffer.save_to_undo) {
+        circular_buffer_append(editor_buffer.undo_buffer, &screen);
+    } else {
+        *((struct editor_screen_t *) circular_buffer_at_end(editor_buffer.undo_buffer)) = screen;
+    }
     *editor_buffer.undo_idx = editor_buffer.undo_buffer->length - 1;
 
     global_only_undo_stack_append(editor_buffer, screen);
@@ -410,26 +489,39 @@ undo_stack_append(struct editor_buffer_t editor_buffer, struct editor_screen_t s
 void
 global_only_undo_stack_append(struct editor_buffer_t editor_buffer, struct editor_screen_t screen)
 {
-    struct editor_screen_t *screen_to_overwrite = circular_buffer_next(editor_buffer.global_undo_buffer);
-    if (screen_to_overwrite != NULL) {
-        rope_dec_rc(screen_to_overwrite->text);
-        line_rope_dec_rc(screen_to_overwrite->lines);
-
-        if (screen_to_overwrite->cursor_infos != NULL) {
-            vector_free(screen_to_overwrite->cursor_infos);
-        }
-
-        // nullify this so that the next time we come to it we don't try to free garbage rope data
-        circular_buffer_set_next_write_index_null(editor_buffer.global_undo_buffer);
-    }
+    struct editor_screen_t *screen_to_overwrite = *editor_buffer.save_to_undo ?
+                                                  circular_buffer_next(editor_buffer.global_undo_buffer) :
+                                                  circular_buffer_at_end(editor_buffer.global_undo_buffer);
+    screen_free(screen_to_overwrite);
 
     rope_inc_rc(screen.text);
     line_rope_inc_rc(screen.lines);
 
-    circular_buffer_append(editor_buffer.global_undo_buffer, &screen);
+    if (*editor_buffer.save_to_undo) {
+        circular_buffer_append(editor_buffer.global_undo_buffer, &screen);
+    } else {
+        *((struct editor_screen_t *) circular_buffer_at_end(editor_buffer.global_undo_buffer)) = screen;
+    }
     *editor_buffer.global_undo_idx = editor_buffer.global_undo_buffer->length - 1;
 
     *editor_buffer.current_screen = screen;
+}
+
+void
+editor_buffer_copy_last_undo(struct editor_buffer_t editor_buffer)
+{
+    struct editor_screen_t edited_screen;
+    edited_screen.cursor_infos = vector_copy(editor_buffer.current_screen->cursor_infos);
+    edited_screen.lines = line_rope_shallow_copy(editor_buffer.current_screen->lines);
+    edited_screen.text = rope_shallow_copy(editor_buffer.current_screen->text);
+
+    undo_stack_append(editor_buffer, edited_screen);
+}
+
+void
+editor_buffer_set_saves_to_undo(struct editor_buffer_t editor_buffer, int8_t saves)
+{
+    *editor_buffer.save_to_undo = saves;
 }
 
 // helpers
