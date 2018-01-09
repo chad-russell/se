@@ -1,7 +1,5 @@
 
-#include <string.h>
 #include "forward_types.h"
-#include "line_rope.h"
 #include "buf.h"
 #include "editor_buffer.h"
 
@@ -16,13 +14,25 @@ void print_buffer(struct editor_buffer_t buffer) {
 int
 main()
 {
-    struct editor_buffer_t buffer = editor_buffer_create(30);
+    buf_id = 0;
+    buf_size = 0;
+    rope_id = 0;
+    line_rope_id = 0;
 
-//    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Desktop/very_large.txt");
-//    editor_buffer_open_file(buffer, 30, "/Users/chadrussell/.se_config.json");
-//    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Desktop/menu.json");
-//    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Desktop/hello.txt");
-//    editor_buffer_open_file(buffer, 30, "/Users/chadrussell/Desktop/shakespeare.txt");
+    struct editor_buffer_t buffer = editor_buffer_create(100);
+
+//    editor_buffer_open_file(buffer, 100, "/Users/chadrussell/.se_config.json");
+    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Projects/text/menu.json");
+//    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Projects/text/hello.txt");
+//    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Projects/text/very_large.txt");
+//    editor_buffer_open_file(buffer, 30, "/Users/chadrussell/Projects/text/shakespeare.txt");
+
+//    buf_print_fmt("before: %i32\n", buffer.current_screen->lines->longest_child_line_length);
+
+//    editor_buffer_set_cursor_point(buffer, 40, 118);
+//    editor_buffer_delete(buffer);
+
+//    buf_print_fmt("after: %i32", buffer.current_screen->lines->longest_child_line_length);
 
 //    for (int i = 0; i < 100000; i++) {
 //        *buffer.save_to_undo = 0;
@@ -35,9 +45,17 @@ main()
 
 //    print_buffer(buffer);
 
-    editor_buffer_insert(buffer, "ooabbacc");
-    int64_t answer = editor_buffer_search_backward(buffer, "ba", 8);
-    buf_print_fmt("answer: %i64", answer);
+//    editor_buffer_insert(buffer, "ooabbacc");
+//    int64_t answer = editor_buffer_search_backward(buffer, "ba", 8);
+//    buf_print_fmt("answer: %i64", answer);
+
+    editor_buffer_set_cursor_is_selection(buffer, 0);
+    editor_buffer_set_cursor_pos(buffer, 0);
+    editor_buffer_set_cursor_is_selection(buffer, 1);
+    editor_buffer_set_cursor_pos(buffer, editor_buffer_get_char_count(buffer));
+    editor_buffer_delete(buffer);
+    editor_buffer_set_cursor_is_selection(buffer, 0);
+    buf_print_fmt("line_count: %i64", editor_buffer_get_line_count_virtual(buffer, 80));
 
     return 0;
 }

@@ -200,4 +200,7 @@ editor_buffer_copy_last_undo(struct editor_buffer_t editor_buffer);
 void
 editor_buffer_set_saves_to_undo(struct editor_buffer_t editor_buffer, int8_t saves);
 
+int64_t
+editor_buffer_get_longest_line_length(struct editor_buffer_t editor_buffer);
+
 #endif //SE_EDITOR_BUFFER_H

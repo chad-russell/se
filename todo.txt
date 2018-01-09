@@ -1,42 +1,20 @@
 TODO:
   -- FEATURES
-    - more vim
-      - di(
-      - di)
-      - di{
-      - di}
-      - di[
-      - di]
-      - di<
-      - di>
-      - daw 
-      - dae
-      - dap
-      - da"
-      - da'
-      - da(
-      - da)
-      - da{
-      - da}
-      - da[
-      - da]
-      - da<
-      - da>
-      - make ^ go to the first non-space character and 0 go to the first character of a line
-    - more search stuff
-      - case insensitive
-      - replace
-        - replace next
-        - replace all
-      - find next and continue highlighting (like cmd+d in sublime)
-      - find (and highlight) all
+    - make tab work
     - commands
-      - search (and find, replace, etc)
+        - search (and find, replace, etc)
+          - case insensitive
+          - replace
+            - replace next
+            - replace all
+          - find next and continue highlighting (like cmd+d in sublime)
+          - find (and highlight) all
       - open
       - save
-    - page leaf nodes to/from disk
-      - even when reading -- basically we should be able to open a 10GB file without using more than a finite amount of memory
-    - plugin architecture, user-created commands
+    - ui info like sublime has (line/column numbers, Tab Size, etc. on bottom)
+    - file tree
+    - open anything (cmd+p in sublime)
+    - macros
     - tokenization (possibly supporting custom api?) and highlighting of grammars
     - configure tabs/spaces
     - make what a 'word' is in move-by-words configurable
@@ -48,7 +26,8 @@ TODO:
     - relative line numbers
       - how to resolve with multiple cursors??
     - autocomplete
-    - file tree
+    - plugin architecture, user-created commands
+        - vim-style bindings for json for example (moving up and down through parent/child ast nodes rather than by line, etc.)
     - marks (?)
     - folding (?)
     - support other file encodings
@@ -56,8 +35,11 @@ TODO:
         - Use BOM if applicable to determine file encoding (and, of course, byte order)
       - binary?
 
-  -- CORRECTNESS
-    - handle combining glyphs
-
   -- PERFORMANCE
-    - delete can be made faster if we know we're not deleting a newline
+    - fix kmp search incremental stuff
+
+  -- CORRECTNESS
+    - clicking on title bar selects to the top :(
+    - minimizing and then un-minimizing crashes
+    - select all and delete crashes (most of the time)
+    - handle combining glyphs

@@ -10,10 +10,15 @@ struct buf_t *
 buf_init(int64_t initial_capacity)
 {
     struct buf_t *buf = (struct buf_t *) se_alloc(1, sizeof(struct buf_t));
+    buf_size += sizeof(struct buf_t);
+
     buf->bytes = (char *) se_alloc(initial_capacity + 1, sizeof(char));
+    buf_size += initial_capacity + 1;
+
     buf->length = 0;
     buf->capacity = initial_capacity + 1;
     buf->rc = 0;
+
     return buf;
 }
 
@@ -37,7 +42,10 @@ buf_ensure_free_bytes(struct buf_t *buf, int64_t capacity)
     }
     if (realloc) {
         char *old_bytes = buf->bytes;
+
         buf->bytes = (char *) se_alloc(1, buf->capacity);
+        buf_size += buf->capacity;
+
         memcpy(buf->bytes, old_bytes, buf->length * sizeof(char));
         free(old_bytes);
     }
@@ -309,7 +317,10 @@ void
 buf_write_i32(struct buf_t *buf, int32_t value)
 {
     int64_t size = snprintf(NULL, 0, "%i", value);
+
     char *s = (char *) se_alloc(size + 1, sizeof(char));
+    buf_size += size + 1;
+
     sprintf(s, "%i", value);
 
     buf_write_str(buf, s);
@@ -328,7 +339,10 @@ void
 buf_write_i64(struct buf_t *buf, int64_t value)
 {
     int64_t size = snprintf(NULL, 0, "%lli", value);
+
     char *s = (char *) se_alloc(size + 1, sizeof(char));
+    buf_size += size + 1;
+
     sprintf(s, "%lli", value);
 
     buf_write_str(buf, s);

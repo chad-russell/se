@@ -21,11 +21,16 @@ struct rope_t {
     int32_t rc;
 
     union {
+        // for parent nodes
         struct {
             struct rope_t *left;
             struct rope_t *right;
         };
-        struct buf_t *str_buf;
+        // for leaf nodes
+//        struct {
+//            const char *page_path;
+            struct buf_t *str_buf;
+//        };
     };
 };
 
@@ -33,6 +38,7 @@ struct line_rope_t {
     // how long is this line?
     uint32_t line_length;
     uint32_t total_line_length;
+    uint32_t longest_child_line_length;
 
     // every leaf counts for one 'character'
     uint32_t char_weight;

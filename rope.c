@@ -74,7 +74,10 @@ rope_leaf_init_length(const char *text, int64_t byte_length, int64_t char_length
         return rope_parent_init(left, right);
     } else {
         struct rope_t *rn = rope_new(1, byte_length, char_length);
+
+        buf_id += 1;
         rn->str_buf = buf_init_fmt("%bytes", text, byte_length);
+
         rn->line_break_weight = count_newlines_length(text, char_length, line_helper);
         rn->total_line_break_weight = rn->line_break_weight;
         return rn;
@@ -138,6 +141,8 @@ rope_set_left(struct rope_t *target, struct rope_t *new_left)
 const char *
 rope_char_at(struct rope_t *rn, int64_t i)
 {
+    if (rn == NULL) { return NULL; }
+    
     if (rn->is_leaf) {
         if (rn->char_weight - 1 < i) {
             return NULL;
@@ -199,14 +204,17 @@ rope_char_number_at_line(struct rope_t *rn, int64_t i)
     return 0;
 }
 
-const char *
+int64_t
+editor_buffer_add_char_incremental(struct rope_t *rn, int64_t start, int64_t end, struct buf_t *buf);
+
+const char
 rope_byte_at(struct rope_t *rn, int64_t i)
 {
     if (rn->is_leaf) {
         if (rn->byte_weight - 1 < i) {
-            return NULL;
+            return -1;
         }
-        return rn->str_buf->bytes + i;
+        return *(rn->str_buf->bytes + i);
     }
 
     if (rn->byte_weight - 1 < i) {
@@ -215,7 +223,7 @@ rope_byte_at(struct rope_t *rn, int64_t i)
         if (rn->left != NULL) {
             return rope_byte_at(rn->left, i);
         }
-        return NULL;
+        return -1;
     }
 }
 
@@ -524,6 +532,16 @@ editor_buffer_set_saves_to_undo(struct editor_buffer_t editor_buffer, int8_t sav
     *editor_buffer.save_to_undo = saves;
 }
 
+int64_t
+editor_buffer_get_longest_line_length(struct editor_buffer_t editor_buffer)
+{
+    if (editor_buffer.current_screen->lines == NULL) {
+        return -1;
+    }
+
+    return editor_buffer.current_screen->lines->longest_child_line_length;
+}
+
 // helpers
 struct rope_t *
 rope_leaf_init_concat(struct rope_t *left, struct rope_t *right)
@@ -531,7 +549,10 @@ rope_leaf_init_concat(struct rope_t *left, struct rope_t *right)
     struct rope_t *rn = rope_new(1,
                                  left->byte_weight + right->byte_weight,
                                  left->char_weight + right->char_weight);
+
+    buf_id += 1;
     rn->str_buf = buf_init_fmt("%str%str", left->str_buf->bytes, right->str_buf->bytes);
+
     rn->line_break_weight = count_newlines(rn->str_buf->bytes);
     rn->total_line_break_weight = rn->line_break_weight;
 
@@ -564,6 +585,8 @@ rope_shallow_copy(struct rope_t *rn)
 struct rope_t *
 rope_new(int8_t is_leaf, int64_t byte_weight, int64_t char_weight)
 {
+    rope_id += 1;
+
     struct rope_t *rn = se_alloc(1, sizeof(struct rope_t));
 
     rn->rc = 0;

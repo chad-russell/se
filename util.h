@@ -9,6 +9,11 @@
 #define SE_UNREACHABLE() SE_PANIC("unreachable"); exit(1)
 #define SE_TODO() SE_PANIC("todo"); exit(1)
 
+int64_t buf_id;
+int64_t buf_size;
+int64_t rope_id;
+int64_t line_rope_id;
+
 int
 bytes_in_codepoint_utf8(char first_byte);
 

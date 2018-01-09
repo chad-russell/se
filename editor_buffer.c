@@ -43,7 +43,10 @@ editor_buffer_create(uint32_t virtual_line_length)
     vector_append(screen.cursor_infos, &cursor_info);
 
     screen.text = rope_leaf_init("");
+
+    // todo(chad): initialize this only if the number of lines is less than a certain threshold
     screen.lines = line_rope_leaf_init(0, virtual_line_length);
+//    screen.lines = NULL;
 
     undo_stack_append(editor_buffer, screen);
 
@@ -130,7 +133,9 @@ editor_screen_calculate_line_length(struct editor_screen_t screen, int64_t line)
 {
     int64_t char_number_at_current_line = rope_char_number_at_line(screen.text, line);
     int64_t char_number_at_next_line = rope_char_number_at_line(screen.text, line + 1);
-    return (int64_t) (char_number_at_next_line - char_number_at_current_line - 1);
+    int64_t answer = (int64_t) (char_number_at_next_line - char_number_at_current_line - 1);
+    if (answer < 0) { answer = 0; }
+    return answer;
 }
 
 void
@@ -147,12 +152,15 @@ void
 ensure_virtual_newline_length(struct line_rope_t *rn, int64_t virtual_line_length)
 {
     if (rn == NULL) { return; }
+
     if (rn->virtual_line_length == virtual_line_length) { return; }
 
-    rn->virtual_line_length = virtual_line_length;
+    rn->virtual_line_length = (uint32_t) virtual_line_length;
 
-    ensure_virtual_newline_length(rn->left, virtual_line_length);
-    ensure_virtual_newline_length(rn->right, virtual_line_length);
+    if (!rn->is_leaf) {
+        ensure_virtual_newline_length(rn->left, virtual_line_length);
+        ensure_virtual_newline_length(rn->right, virtual_line_length);
+    }
 
     rn->virtual_newline_count = line_rope_virtual_newline_weight(rn);
     rn->total_virtual_newline_count = line_rope_total_virtual_newline_weight(rn);
@@ -696,6 +704,8 @@ editor_buffer_get_line_count(struct editor_buffer_t editor_buffer)
 int64_t
 line_rope_char_at_virtual_newline(struct line_rope_t *rn, int64_t i)
 {
+    if (rn == NULL) { return -1; }
+
     if (rn->is_leaf) {
         if ((int64_t) rn->virtual_newline_count - 1 < i) {
             return 0;
@@ -717,6 +727,8 @@ line_rope_char_at_virtual_newline(struct line_rope_t *rn, int64_t i)
 int64_t
 virtual_newline_total(struct line_rope_t *rn, int64_t line)
 {
+    if (rn == NULL) { return -1; }
+
     if (rn->is_leaf) {
         if ((int64_t) rn->char_weight - 1 < line) {
             return 0;
@@ -812,27 +824,10 @@ editor_buffer_get_char_number_at_line(struct editor_buffer_t editor_buffer, int6
     return rope_char_number_at_line(screen.text, i);
 }
 
-// SAVED -- DELETE WHEN THE OTHER ONE IS DEFINITELY WORKING
-//struct buf_t *
-//editor_buffer_get_text_between_characters(struct editor_buffer_t editor_buffer, int64_t start, int64_t end)
-//{
-//    struct rope_t *r = editor_buffer.current_screen->text;
-//
-//    struct buf_t *buf = buf_init(end - start + 1);
-//    for (int64_t i = start; i < end; i++) {
-//        const char *char_at = rope_char_at(r, i);
-//
-//        // char_at will only be null if we are looking for a character past the end of the rope
-//        if (char_at != NULL) {
-//            buf_write_bytes(buf, char_at, bytes_in_codepoint_utf8(*char_at));
-//        }
-//    }
-//
-//    return buf;
-//}
-
 int64_t
 editor_buffer_add_char_incremental(struct rope_t *rn, int64_t start, int64_t end, struct buf_t *buf) {
+    if (rn == NULL) { return 0; }
+
     if (rn->is_leaf) {
         if (rn->char_weight - 1 < start) {
             return 0;
@@ -875,19 +870,8 @@ struct buf_t *
 editor_buffer_get_text_between_characters(struct editor_buffer_t editor_buffer, int64_t start, int64_t end)
 {
     struct rope_t *rn = editor_buffer.current_screen->text;
-
     struct buf_t *buf = buf_init(end - start + 1);
-
     editor_buffer_add_char_incremental(rn, start, end, buf);
-//    int64_t i = start;
-//    while (i < end) {
-//        int64_t added = editor_buffer_add_char_incremental(rn, i, end, buf);
-//        if (added == 0) {
-//            break;
-//        }
-//        i += added;
-//    }
-
     return buf;
 }
 
@@ -1050,9 +1034,9 @@ editor_buffer_set_cursor_point_virtual_for_cursor_index(struct editor_buffer_t e
 
     editor_buffer_set_cursor_pos_for_cursor_index(editor_buffer, cursor_idx, char_pos);
 
-    if (cursor_info->char_pos == cursor_info->selection_char_pos) {
-        cursor_info->is_selection = 0;
-    }
+//    if (cursor_info->char_pos == cursor_info->selection_char_pos) {
+//        cursor_info->is_selection = 0;
+//    }
 }
 
 void
@@ -1113,9 +1097,9 @@ editor_buffer_set_cursor_pos_for_cursor_index(struct editor_buffer_t editor_buff
 
     editor_screen_set_line_and_col_for_char_pos(cursor_info, editor_buffer.current_screen->text);
 
-    if (cursor_info->char_pos == cursor_info->selection_char_pos) {
-        cursor_info->is_selection = 0;
-    }
+//    if (cursor_info->char_pos == cursor_info->selection_char_pos) {
+//        cursor_info->is_selection = 0;
+//    }
 }
 
 void
@@ -1161,9 +1145,9 @@ editor_buffer_set_cursor_point_for_cursor_index(struct editor_buffer_t editor_bu
     cursor_info->row = computed_row;
     cursor_info->col = computed_col;
 
-    if (cursor_info->char_pos == cursor_info->selection_char_pos) {
-        cursor_info->is_selection = 0;
-    }
+//    if (cursor_info->char_pos == cursor_info->selection_char_pos) {
+//        cursor_info->is_selection = 0;
+//    }
 }
 
 void
@@ -1299,9 +1283,9 @@ editor_buffer_set_cursor_pos_relative(struct editor_buffer_t editor_buffer, int6
 
         editor_screen_set_line_and_col_for_char_pos(cursor_info, editor_buffer.current_screen->text);
 
-        if (cursor_info->char_pos == cursor_info->selection_char_pos) {
-            cursor_info->is_selection = 0;
-        }
+//        if (cursor_info->char_pos == cursor_info->selection_char_pos) {
+//            cursor_info->is_selection = 0;
+//        }
     }
 
     sort_and_merge_cursors(editor_buffer);
@@ -1457,12 +1441,14 @@ kmp_search(struct editor_buffer_t editor_buffer, const char *W, int64_t start_ch
     kmp_prefix(W, T);
 
     int64_t byte_at;
-    struct rope_t *incremental_leaf = NULL;
+//    struct rope_t *incremental_leaf = NULL;
 
     while (m + i < len_S) {
-        incremental_leaf = rope_byte_at_incremental(editor_buffer.current_screen->text, incremental_leaf, m + i, &byte_at);
+//        incremental_leaf = rope_byte_at_incremental(editor_buffer.current_screen->text, incremental_leaf, m + i, &byte_at);
+        byte_at = rope_byte_at(editor_buffer.current_screen->text, m + i);
 
-        if (incremental_leaf != NULL && byte_at != -1 && W[i] == *(incremental_leaf->str_buf->bytes + byte_at)) {
+//        if (incremental_leaf != NULL && byte_at != -1 && W[i] == *(incremental_leaf->str_buf->bytes + byte_at)) {
+        if (byte_at == W[i]) {
             i += 1;
             if (i == len_W) {
                 // occurrence found!
@@ -1505,12 +1491,14 @@ kmp_search_backward(struct editor_buffer_t editor_buffer, const char *W, int64_t
     kmp_prefix(WR, T);
 
     int64_t byte_at;
-    struct rope_t *incremental_leaf = NULL;
+//    struct rope_t *incremental_leaf = NULL;
 
     while (m - i >= 0) {
-        incremental_leaf = rope_byte_at_incremental(editor_buffer.current_screen->text, incremental_leaf, m - i, &byte_at);
+//        incremental_leaf = rope_byte_at_incremental(editor_buffer.current_screen->text, incremental_leaf, m - i, &byte_at);
+        byte_at = rope_byte_at(editor_buffer.current_screen->text, m - i);
 
-        if (incremental_leaf != NULL && byte_at != -1 && WR[i] == *(incremental_leaf->str_buf->bytes + byte_at)) {
+//        if (incremental_leaf != NULL && byte_at != -1 && WR[i] == *(incremental_leaf->str_buf->bytes + byte_at)) {
+        if (byte_at == WR[i]) {
             i += 1;
             if (i == len_W) {
                 // occurrence found!

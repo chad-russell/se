@@ -1,5 +1,5 @@
-#ifndef SE_rope_H
-#define SE_rope_H
+#ifndef SE_ROPE_H
+#define SE_ROPE_H
 
 #include <ntsid.h>
 #include "forward_types.h"
@@ -33,7 +33,7 @@ rope_char_at(struct rope_t *rn, int64_t i);
 int64_t
 rope_char_number_at_line(struct rope_t *rn, int64_t i);
 
-const char *
+const char
 rope_byte_at(struct rope_t *rn, int64_t i);
 
 struct rope_t *
@@ -86,4 +86,4 @@ global_only_undo_stack_append(struct editor_buffer_t editor_buffer, struct edito
 void
 undo_stack_append(struct editor_buffer_t editor_buffer, struct editor_screen_t screen);
 
-#endif //SE_rope_H
+#endif //SE_ROPE_H
