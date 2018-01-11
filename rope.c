@@ -207,6 +207,9 @@ rope_char_number_at_line(struct rope_t *rn, int64_t i)
 int64_t
 editor_buffer_add_char_incremental(struct rope_t *rn, int64_t start, int64_t end, struct buf_t *buf);
 
+int64_t
+editor_buffer_add_bytes_incremental(struct rope_t *rn, int64_t start, int64_t end, struct buf_t *buf);
+
 const char
 rope_byte_at(struct rope_t *rn, int64_t i)
 {
@@ -286,6 +289,34 @@ rope_char_for_byte_at(struct rope_t *rn, int64_t i)
         }
         return 0;
     }
+}
+
+int64_t
+byte_for_char_at(struct rope_t *rn, int64_t i)
+{
+    if (rn == NULL) { return 0; }
+
+    if (rn->is_leaf) {
+        if (rn->char_weight - 1 < i) {
+            return rn->byte_weight - 1;
+        }
+
+        int32_t byte_offset = 0;
+        for (int32_t j = 0; j < i; j++) {
+            byte_offset += bytes_in_codepoint_utf8(*(rn->str_buf->bytes + byte_offset));
+        }
+
+        return byte_offset;
+    }
+
+    if (rn->char_weight - 1 < i) {
+        int64_t left_weight = rn->left == NULL ? 0 : rn->left->total_byte_weight;
+        return left_weight + byte_for_char_at(rn->right, i - rn->left->total_char_weight);
+    } else if (rn->left != NULL) {
+        return byte_for_char_at(rn->left, i);
+    }
+
+    return 0;
 }
 
 int64_t

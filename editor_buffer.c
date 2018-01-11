@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include "editor_buffer.h"
 #include "rope.h"
 #include "circular_buffer.h"
@@ -763,13 +764,13 @@ editor_buffer_character_position_for_virtual_point(struct editor_buffer_t editor
         virtual_newlines_before_current_line = virtual_newline_total(editor_buffer.current_screen->lines, current_line - 1);
     }
 
-    int64_t char_pos = rope_char_number_at_line(editor_buffer.current_screen->text, current_line);
+    int64_t char_pos = line_rope_char_number_at_line(editor_buffer.current_screen->lines, current_line);
     int64_t additional_virtual_newlines_needed = line - virtual_newlines_before_current_line;
     int64_t additional_cols_needed = additional_virtual_newlines_needed * virtual_line_length;
 
     int64_t final_char_pos = char_pos + additional_cols_needed + col;
 
-    int64_t char_pos_at_start_of_current_line = rope_char_number_at_line(editor_buffer.current_screen->text, current_line);
+    int64_t char_pos_at_start_of_current_line = line_rope_char_number_at_line(editor_buffer.current_screen->lines, current_line);
 
     // make sure it doesn't go past the end of the current line
     int64_t end_of_current_line = char_pos_at_start_of_current_line + current_line_length;
@@ -821,43 +822,84 @@ int64_t
 editor_buffer_get_char_number_at_line(struct editor_buffer_t editor_buffer, int64_t i)
 {
     struct editor_screen_t screen = editor_buffer_get_current_screen(editor_buffer);
-    return rope_char_number_at_line(screen.text, i);
+    return line_rope_char_number_at_line(screen.lines, i);
 }
 
+//int64_t
+//editor_buffer_add_char_incremental(struct rope_t *rn, int64_t start, int64_t end, struct buf_t *buf)
+//{
+//    if (rn == NULL) { return 0; }
+//
+//    if (rn->is_leaf) {
+//        if (rn->char_weight - 1 < start) {
+//            return 0;
+//        }
+//
+//        int64_t byte_offset = 0;
+//
+//        for (int64_t j = 0; j < start; j++) {
+//            byte_offset += bytes_in_codepoint_utf8(*(rn->str_buf->bytes + byte_offset));
+//        }
+//
+//        // write as many chars as we can
+//        int64_t j = start;
+//        while (j < end && byte_offset < rn->str_buf->length) {
+//            int64_t char_size = bytes_in_codepoint_utf8(*(rn->str_buf->bytes + byte_offset));
+//            buf_write_bytes(buf, rn->str_buf->bytes + byte_offset, char_size);
+//            byte_offset += char_size;
+//            j += 1;
+//        }
+//
+//        // return how many chars we wrote
+//        return j - start;
+//    }
+//
+//    if (rn->char_weight - 1 < start) {
+//        return editor_buffer_add_char_incremental(rn->right, start - rn->char_weight, end - rn->char_weight, buf);
+//    } else {
+//        if (rn->left != NULL) {
+//            int64_t added_from_left = editor_buffer_add_char_incremental(rn->left, start, end, buf);
+//            if (rn->right != NULL && start + added_from_left < end) {
+//                int64_t added_from_right = editor_buffer_add_char_incremental(rn->right, start + added_from_left - rn->char_weight, end - rn->char_weight, buf);
+//                return added_from_left + added_from_right;
+//            }
+//            return added_from_left;
+//        }
+//        return 0;
+//    }
+//}
+
 int64_t
-editor_buffer_add_char_incremental(struct rope_t *rn, int64_t start, int64_t end, struct buf_t *buf) {
+editor_buffer_add_bytes_incremental(struct rope_t *rn, int64_t start, int64_t end, struct buf_t *buf)
+{
     if (rn == NULL) { return 0; }
 
     if (rn->is_leaf) {
-        if (rn->char_weight - 1 < start) {
+        if (rn->byte_weight - 1 < start) {
             return 0;
         }
 
-        int64_t byte_offset = 0;
-        for (int64_t j = 0; j < start; j++) {
-            byte_offset += bytes_in_codepoint_utf8(*(rn->str_buf->bytes + byte_offset));
+        int64_t possible_bytes = rn->byte_weight - start;
+        int64_t desired_bytes = end - start;
+        int64_t actual_bytes = possible_bytes;
+        if (actual_bytes > desired_bytes) {
+            actual_bytes = desired_bytes;
         }
 
-        // write as many chars as we can
-        int64_t j = start;
-        while (j < end && byte_offset < rn->str_buf->length) {
-            int64_t char_size = bytes_in_codepoint_utf8(*(rn->str_buf->bytes + byte_offset));
-            buf_write_bytes(buf, rn->str_buf->bytes + byte_offset, char_size);
-            byte_offset += char_size;
-            j += 1;
-        }
+        // write to the buffer
+        buf_write_bytes(buf, rn->str_buf->bytes + start, actual_bytes);
 
         // return how many chars we wrote
-        return j - start;
+        return actual_bytes;
     }
 
-    if (rn->char_weight - 1 < start) {
-        return editor_buffer_add_char_incremental(rn->right, start - rn->char_weight, end - rn->char_weight, buf);
+    if (rn->byte_weight - 1 < start) {
+        return editor_buffer_add_bytes_incremental(rn->right, start - rn->byte_weight, end - rn->byte_weight, buf);
     } else {
         if (rn->left != NULL) {
-            int64_t added_from_left = editor_buffer_add_char_incremental(rn->left, start, end, buf);
+            int64_t added_from_left = editor_buffer_add_bytes_incremental(rn->left, start, end, buf);
             if (rn->right != NULL && start + added_from_left < end) {
-                int64_t added_from_right = editor_buffer_add_char_incremental(rn->right, start + added_from_left - rn->char_weight, end - rn->char_weight, buf);
+                int64_t added_from_right = editor_buffer_add_bytes_incremental(rn->right, start + added_from_left - rn->byte_weight, end - rn->byte_weight, buf);
                 return added_from_left + added_from_right;
             }
             return added_from_left;
@@ -869,9 +911,19 @@ editor_buffer_add_char_incremental(struct rope_t *rn, int64_t start, int64_t end
 struct buf_t *
 editor_buffer_get_text_between_characters(struct editor_buffer_t editor_buffer, int64_t start, int64_t end)
 {
+    int64_t char_count = editor_buffer_get_char_count(editor_buffer);
+    int64_t real_end = end;
+    if (real_end > char_count) { real_end = char_count; }
+
+    if (real_end <= start) { return buf_init(0); }
+
     struct rope_t *rn = editor_buffer.current_screen->text;
     struct buf_t *buf = buf_init(end - start + 1);
-    editor_buffer_add_char_incremental(rn, start, end, buf);
+
+    int64_t start_byte = byte_for_char_at(editor_buffer.current_screen->text, start);
+    int64_t end_byte = byte_for_char_at(editor_buffer.current_screen->text, end);
+    editor_buffer_add_bytes_incremental(rn, start_byte, end_byte, buf);
+
     return buf;
 }
 
@@ -882,17 +934,19 @@ editor_buffer_get_text_between_points(struct editor_buffer_t editor_buffer,
                                       int64_t end_line,
                                       int64_t end_col)
 {
-    struct rope_t *r = editor_buffer.current_screen->text;
-
-    int64_t start_line_char_number = rope_char_number_at_line(r, start_line);
+    int64_t start_line_char_number = line_rope_char_number_at_line(editor_buffer.current_screen->lines, start_line);
     if (start_line_char_number < 0) { start_line_char_number = 0; }
 
     int64_t end_line_char_number;
     int64_t total_lines = 1 + rope_total_line_break_length(editor_buffer.current_screen->text);
+
+    // if we're asking for something past the last line then there's nothing to do
+    if (start_line >= total_lines) { return buf_init(0); }
+
     if (end_line >= total_lines) {
-        end_line_char_number = rope_total_char_length(r);
+        end_line_char_number = rope_total_char_length(editor_buffer.current_screen->text);
     } else {
-        end_line_char_number = rope_char_number_at_line(r, end_line);
+        end_line_char_number = line_rope_char_number_at_line(editor_buffer.current_screen->lines, end_line);
     }
 
     return editor_buffer_get_text_between_characters(editor_buffer,

@@ -16,15 +16,13 @@ TODO:
     - open anything (cmd+p in sublime)
     - macros
     - tokenization (possibly supporting custom api?) and highlighting of grammars
+        - will probably need to have one more rope structure for styles
     - configure tabs/spaces
     - make what a 'word' is in move-by-words configurable
     - watch open files for changes (?)
       - indicate when a file has changed on disk since we started editing it
       - warn when going to save a file but it has changed since we've opened it
       - maybe just provide a 'reload from disk' command
-      - test on json
-    - relative line numbers
-      - how to resolve with multiple cursors??
     - autocomplete
     - plugin architecture, user-created commands
         - vim-style bindings for json for example (moving up and down through parent/child ast nodes rather than by line, etc.)
@@ -39,7 +37,5 @@ TODO:
     - fix kmp search incremental stuff
 
   -- CORRECTNESS
-    - clicking on title bar selects to the top :(
     - minimizing and then un-minimizing crashes
-    - select all and delete crashes (most of the time)
     - handle combining glyphs

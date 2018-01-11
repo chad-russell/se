@@ -170,6 +170,37 @@ line_rope_char_at(struct line_rope_t *rn, int64_t i)
     }
 }
 
+int64_t
+line_rope_char_number_at_line_helper(struct line_rope_t *rn, int64_t i)
+{
+    if (rn == NULL) { return 0; }
+    if (i == 0) { return 0; }
+
+    if (rn->is_leaf) {
+        return 0;
+    }
+
+    if ((int64_t) rn->char_weight - 1 < i) {
+        int64_t left_weight = rn->left == NULL ? 0 : rn->left->total_line_length;
+        return left_weight + line_rope_char_number_at_line_helper(rn->right, i - rn->char_weight);
+    } else {
+        if (rn->left != NULL) {
+            return line_rope_char_number_at_line_helper(rn->left, i);
+        }
+
+        return 0;
+    }
+}
+
+int64_t
+line_rope_char_number_at_line(struct line_rope_t *rn, int64_t i)
+{
+    if (rn == NULL) { return 0; }
+    if (i == 0) { return 0; }
+
+    return i + line_rope_char_number_at_line_helper(rn, i);
+}
+
 struct line_rope_t *
 line_rope_replace_char_at(struct line_rope_t *rn, int64_t i, int64_t new_line_length)
 {

@@ -63,6 +63,9 @@ line_rope_inc_rc(struct line_rope_t *rn);
 void
 line_rope_dec_rc(struct line_rope_t *rn);
 
+int64_t
+line_rope_char_number_at_line(struct line_rope_t *rn, int64_t i);
+
 // free
 void
 line_rope_free(struct line_rope_t *rn);
