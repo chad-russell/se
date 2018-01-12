@@ -1,6 +1,8 @@
 TODO:
   -- FEATURES
-    - make tab work
+    - jump to line (or line and column)
+    - indent/unindent
+    - make '.' work better (right now we're saving literally every vim command in the 'last used' list)
     - commands
         - search (and find, replace, etc)
           - case insensitive

@@ -282,7 +282,8 @@ rope_char_for_byte_at(struct rope_t *rn, int64_t i)
     }
 
     if (rn->byte_weight - 1 < i) {
-        return rn->char_weight + rope_char_for_byte_at(rn->right, i - rn->byte_weight);
+        int64_t left_weight = rn->left == NULL ? 0 : rn->left->total_char_weight;
+        return left_weight + rope_char_for_byte_at(rn->right, i - rn->byte_weight);
     } else {
         if (rn->left != NULL) {
             return rope_char_for_byte_at(rn->left, i);
@@ -298,7 +299,7 @@ byte_for_char_at(struct rope_t *rn, int64_t i)
 
     if (rn->is_leaf) {
         if (rn->char_weight - 1 < i) {
-            return rn->byte_weight - 1;
+            return rn->byte_weight;
         }
 
         int32_t byte_offset = 0;

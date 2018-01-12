@@ -1494,14 +1494,11 @@ kmp_search(struct editor_buffer_t editor_buffer, const char *W, int64_t start_ch
     int64_t T[len_W];
     kmp_prefix(W, T);
 
-    int64_t byte_at;
-//    struct rope_t *incremental_leaf = NULL;
+    char byte_at;
 
     while (m + i < len_S) {
-//        incremental_leaf = rope_byte_at_incremental(editor_buffer.current_screen->text, incremental_leaf, m + i, &byte_at);
         byte_at = rope_byte_at(editor_buffer.current_screen->text, m + i);
 
-//        if (incremental_leaf != NULL && byte_at != -1 && W[i] == *(incremental_leaf->str_buf->bytes + byte_at)) {
         if (byte_at == W[i]) {
             i += 1;
             if (i == len_W) {
@@ -1577,7 +1574,8 @@ kmp_search_backward(struct editor_buffer_t editor_buffer, const char *W, int64_t
 int64_t
 editor_buffer_search_forward(struct editor_buffer_t editor_buffer, const char *search, int64_t start_char)
 {
-    int64_t byte_offset = kmp_search(editor_buffer, search, start_char);
+    int64_t start_byte_offset = byte_for_char_at(editor_buffer.current_screen->text, start_char);
+    int64_t byte_offset = kmp_search(editor_buffer, search, start_byte_offset);
     if (byte_offset == -1) { return -1; }
     return rope_char_for_byte_at(editor_buffer.current_screen->text, byte_offset);
 }
@@ -1585,7 +1583,8 @@ editor_buffer_search_forward(struct editor_buffer_t editor_buffer, const char *s
 int64_t
 editor_buffer_search_backward(struct editor_buffer_t editor_buffer, const char *search, int64_t start_char)
 {
-    int64_t byte_offset = kmp_search_backward(editor_buffer, search, start_char);
+    int64_t start_byte_offset = byte_for_char_at(editor_buffer.current_screen->text, start_char);
+    int64_t byte_offset = kmp_search_backward(editor_buffer, search, start_byte_offset);
     if (byte_offset == -1) { return -1; }
     return rope_char_for_byte_at(editor_buffer.current_screen->text, byte_offset);
 }

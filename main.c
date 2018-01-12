@@ -6,7 +6,7 @@
 
 void print_buffer(struct editor_buffer_t buffer) {
     int64_t line_count = editor_buffer_get_line_count(buffer);
-    for (int64_t i = 0; i < 100; i++) {
+    for (int64_t i = 0; i < line_count; i++) {
         struct buf_t *line_buf = editor_buffer_get_text_between_points(buffer, i, 0, i + 1, 0);
         buf_print_fmt("%str", line_buf->bytes);
     }
@@ -15,54 +15,28 @@ void print_buffer(struct editor_buffer_t buffer) {
 int
 main()
 {
-    buf_id = 0;
-    buf_size = 0;
-    rope_id = 0;
-    line_rope_id = 0;
-
-//    struct editor_buffer_t buffer = editor_buffer_create(100);
+    struct editor_buffer_t buffer = editor_buffer_create(100);
 
 //    editor_buffer_open_file(buffer, 100, "/Users/chadrussell/.se_config.json");
-//    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Projects/text/menu.json");
+    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Projects/text/menu.json");
 //    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Projects/text/hello.txt");
 //    editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Projects/text/very_large.txt");
 //    editor_buffer_open_file(buffer, 30, "/Users/chadrussell/Projects/text/shakespeare.txt");
 
-    for (int i = 0; i < 100; i++) {
-        struct editor_buffer_t buffer = editor_buffer_create(100);
-        editor_buffer_open_file(buffer, 80, "/Users/chadrussell/Projects/text/menu.json");
-        editor_buffer_destroy(buffer);
-    }
+    editor_buffer_set_cursor_point(buffer, 284468, 32);
 
-//    buf_print_fmt("before: %i32\n", buffer.current_screen->lines->longest_child_line_length);
+    // cursor_pos IS correct 100%
+    int64_t cursor_pos = editor_buffer_get_cursor_pos(buffer, 0);
 
-//    editor_buffer_set_cursor_point(buffer, 40, 118);
-//    editor_buffer_delete(buffer);
+    // should be 37 chars after where we are now (i.e. cursor_pos + 37, or 14258761)
+    int64_t found = editor_buffer_search_forward(buffer, "G", cursor_pos);
 
-//    buf_print_fmt("after: %i32", buffer.current_screen->lines->longest_child_line_length);
+    // cursor_pos: 14258724
+    // start_char: 14258724
+    // byte_offset: 14259745
 
-//    for (int i = 0; i < 100000; i++) {
-//        *buffer.save_to_undo = 0;
-//        editor_buffer_insert(buffer, "hello, world! :)");
-//        editor_buffer_set_cursor_is_selection(buffer, 1);
-//        editor_buffer_set_cursor_pos(buffer, 0);
-//        editor_buffer_delete(buffer);
-//        editor_buffer_undo(buffer, 0);
-//    }
-
-//    print_buffer(buffer);
-
-//    editor_buffer_insert(buffer, "ooabbacc");
-//    int64_t answer = editor_buffer_search_backward(buffer, "ba", 8);
-//    buf_print_fmt("answer: %i64", answer);
-
-//    editor_buffer_set_cursor_is_selection(buffer, 0);
-//    editor_buffer_set_cursor_pos(buffer, 0);
-//    editor_buffer_set_cursor_is_selection(buffer, 1);
-//    editor_buffer_set_cursor_pos(buffer, editor_buffer_get_char_count(buffer));
-//    editor_buffer_delete(buffer);
-//    editor_buffer_set_cursor_is_selection(buffer, 0);
-//    buf_print_fmt("line_count: %i64", editor_buffer_get_line_count_virtual(buffer, 80));
+//    buf_print_fmt("char for byte at 14258724: %i64\n", rope_char_for_byte_at(buffer.current_screen->text, 14258724));
+//    buf_print_fmt("char for byte at 14259745: %i64\n", rope_char_for_byte_at(buffer.current_screen->text, 14259745));
 
     return 0;
 }
