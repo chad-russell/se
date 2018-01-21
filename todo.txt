@@ -1,43 +1,50 @@
 TODO:
-  -- FEATURES
-    - jump to line (or line and column)
-    - indent/unindent
-    - make '.' work better (right now we're saving literally every vim command in the 'last used' list)
-    - commands
-        - search (and find, replace, etc)
-          - case insensitive
-          - replace
-            - replace next
-            - replace all
-          - find next and continue highlighting (like cmd+d in sublime)
-          - find (and highlight) all
-      - open
-      - save
-    - ui info like sublime has (line/column numbers, Tab Size, etc. on bottom)
-    - file tree
-    - open anything (cmd+p in sublime)
+
+  -- CORRECTNESS
+    - 'jump to location' does not scroll if we pick a location outside the current view
+    - disable 'o' and 'shift + O' vim stuff in the command pane view. It lets us insert newlines which is bad!!
+    - minimizing and then un-minimizing and attempting to edit crashes :(
+    - if we can't load the config file, make SURE everything has a sane default!!!!
+    - fix all the CATransaction bugs and so on that always show up in the XCode console
+
+  -- BIG THINGS
+    - new window
+    - search improvements
+      - case insensitive
+      - replace
+        - replace next
+        - replace all
+      - find next and continue highlighting (like cmd+d in sublime)
+      - find (and highlight) all
+      - regex (😱)
+        - will probably have to write our own parser...
+        - start by supporting just concatenation, '*', '.', '[]', '\d', '\D', '\w', '\W', '\s', '\S'
     - macros
     - tokenization (possibly supporting custom api?) and highlighting of grammars
         - will probably need to have one more rope structure for styles
-    - configure tabs/spaces
-    - make what a 'word' is in move-by-words configurable
-    - watch open files for changes (?)
-      - indicate when a file has changed on disk since we started editing it
-      - warn when going to save a file but it has changed since we've opened it
-      - maybe just provide a 'reload from disk' command
-    - autocomplete
     - plugin architecture, user-created commands
         - vim-style bindings for json for example (moving up and down through parent/child ast nodes rather than by line, etc.)
-    - marks (?)
-    - folding (?)
-    - support other file encodings
-      - UTF-16
-        - Use BOM if applicable to determine file encoding (and, of course, byte order)
-      - binary?
+        - autocomplete plugin
+        - smart indentation by file type
+    - serialize and save all state so we can close and reopen the app and still keep our open buffers, full undo history, etc.
+    - folding lines (or arbitrary regions?)
+      - will need another rope structure
+
+  -- LITTLER THINGS
+    - use NSTabView and friends rather than current tab situation
+      - if opening a file which is already open in another tab, just switch to that tab
+    - cmd + ',' to get to config file, and open in new tab by default
+    - file tree improvements
+      - hover should highlight (but not select!!) rows
+      - should remember its last width when it was open, and toggling should toggle to this width
+      - more file type icons
+    - better '.'
+      - probably want to move to a model where everything is always added to the '.' array except when we explicitly clear it.
+    - ui to indicate when a file is unsaved
+      - should also do a popup when closing a tab (or the whole app) if unsaved stuff
+    - show animation in the sidebar when opening a folder
 
   -- PERFORMANCE
     - fix kmp search incremental stuff
-
-  -- CORRECTNESS
-    - minimizing and then un-minimizing crashes
-    - handle combining glyphs
+    - when we paste a large text block things get real slow 
+      - maybe we're not splitting it up into a balanced tree in the same way we would if we were reading text??

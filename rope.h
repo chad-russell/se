@@ -1,7 +1,6 @@
 #ifndef SE_ROPE_H
 #define SE_ROPE_H
 
-#include <ntsid.h>
 #include "forward_types.h"
 
 // init

@@ -25,7 +25,17 @@ void
 editor_buffer_insert(struct editor_buffer_t editor_buffer, const char *text);
 
 void
+editor_buffer_insert_at_point(struct editor_buffer_t editor_buffer, const char *text,
+                              int64_t row, int64_t col,
+                              int8_t virtual, int64_t virtual_line_length);
+
+void
 editor_buffer_delete(struct editor_buffer_t editor_buffer);
+
+void
+editor_buffer_delete_at_point(struct editor_buffer_t editor_buffer, int64_t num_chars,
+                              int64_t row, int64_t col,
+                              int8_t virtual, int64_t virtual_line_length);
 
 void
 editor_buffer_undo(struct editor_buffer_t editor_buffer, int64_t undo_idx);
@@ -123,10 +133,27 @@ void
 editor_buffer_set_cursor_point_to_start_of_line(struct editor_buffer_t editor_buffer);
 
 void
+editor_buffer_set_cursor_point_to_start_of_line_for_cursor_index(struct editor_buffer_t editor_buffer,
+                                                                 int64_t cursor_idx);
+
+void
 editor_buffer_set_cursor_point_to_end_of_line(struct editor_buffer_t editor_buffer);
 
 void
+editor_buffer_set_cursor_point_to_end_of_line_for_cursor_index(struct editor_buffer_t editor_buffer, int64_t cursor_idx);
+
+void
+editor_buffer_set_cursor_point_to_start_of_line_virtual_for_cursor_index(struct editor_buffer_t editor_buffer,
+                                                                         int64_t cursor_idx,
+                                                                         int64_t virtual_line_length);
+
+void
 editor_buffer_set_cursor_point_to_start_of_line_virtual(struct editor_buffer_t editor_buffer, int64_t virtual_line_length);
+
+void
+editor_buffer_set_cursor_point_to_end_of_line_virtual_for_cursor_index(struct editor_buffer_t editor_buffer,
+                                                                       int64_t cursor_idx,
+                                                                       int64_t virtual_line_length);
 
 void
 editor_buffer_set_cursor_point_to_end_of_line_virtual(struct editor_buffer_t editor_buffer, int64_t virtual_line_length);
@@ -145,6 +172,9 @@ editor_buffer_make_single_cursor(struct editor_buffer_t editor_buffer);
 
 void
 editor_buffer_set_cursor_pos_relative(struct editor_buffer_t editor_buffer, int64_t relative_cursor);
+
+void
+editor_buffer_set_cursor_pos_relative_for_cursor_index(struct editor_buffer_t editor_buffer, int64_t cursor_idx, int64_t relative_cursor);
 
 int64_t
 editor_buffer_get_cursor_selection_start_row_virtual(struct editor_buffer_t editor_buffer, int64_t cursor_idx, int64_t virtual_line_length);
@@ -186,13 +216,19 @@ int64_t
 editor_buffer_search_backward(struct editor_buffer_t editor_buffer, const char *search, int64_t start_char);
 
 void
-editor_buffer_set_cursor_point_to_start_of_next_word(struct editor_buffer_t editor_buffer);
+editor_buffer_set_cursor_point_to_end_of_current_paragraph(struct editor_buffer_t editor_buffer, int64_t virtual, int64_t virtual_newline_length);
 
 void
-editor_buffer_set_cursor_point_to_end_of_current_word(struct editor_buffer_t editor_buffer);
+editor_buffer_set_cursor_point_to_start_of_current_paragraph(struct editor_buffer_t editor_buffer, int64_t virtual, int64_t virtual_newline_length);
 
 void
-editor_buffer_set_cursor_point_to_start_of_previous_word(struct editor_buffer_t editor_buffer);
+editor_buffer_set_cursor_point_to_start_of_next_word(struct editor_buffer_t editor_buffer, const char *word_breaking_chars);
+
+void
+editor_buffer_set_cursor_point_to_end_of_current_word(struct editor_buffer_t editor_buffer, const char *word_breaking_chars);
+
+void
+editor_buffer_set_cursor_point_to_start_of_previous_word(struct editor_buffer_t editor_buffer, const char *word_breaking_chars);
 
 void
 editor_buffer_copy_last_undo(struct editor_buffer_t editor_buffer);
