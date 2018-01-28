@@ -1,14 +1,10 @@
 TODO:
 
   -- CORRECTNESS
-    - 'jump to location' does not scroll if we pick a location outside the current view
-    - disable 'o' and 'shift + O' vim stuff in the command pane view. It lets us insert newlines which is bad!!
     - minimizing and then un-minimizing and attempting to edit crashes :(
-    - if we can't load the config file, make SURE everything has a sane default!!!!
     - fix all the CATransaction bugs and so on that always show up in the XCode console
 
   -- BIG THINGS
-    - new window
     - search improvements
       - case insensitive
       - replace
@@ -19,30 +15,38 @@ TODO:
       - regex (😱)
         - will probably have to write our own parser...
         - start by supporting just concatenation, '*', '.', '[]', '\d', '\D', '\w', '\W', '\s', '\S'
-    - macros
-    - tokenization (possibly supporting custom api?) and highlighting of grammars
-        - will probably need to have one more rope structure for styles
     - plugin architecture, user-created commands
         - vim-style bindings for json for example (moving up and down through parent/child ast nodes rather than by line, etc.)
         - autocomplete plugin
         - smart indentation by file type
+    - decorations
+      - will need one more rope structure
+      - should support:
+        - folding regions
+        - underline, bold, italic
+        - highlight (background color)
+        - text color
+        - hyperlinks (action on click)
+          - change style on mouseover
+      - build api around this to support custom tokenization and highlighting of grammars
+        - come up with a file format (or look into supporting textmate's format) which can work with a generic highlighter
     - serialize and save all state so we can close and reopen the app and still keep our open buffers, full undo history, etc.
-    - folding lines (or arbitrary regions?)
-      - will need another rope structure
 
   -- LITTLER THINGS
+    - switch to #RRGGBB and #AARRGGBB for colors in the preferences file
+    - shift + a is wrong
+    - pasting over visually highlighted lines is wrong
+      - need to put an extend to lines somewhere
+    - enter should indent as much as the previous line (auto-indent hack)
     - use NSTabView and friends rather than current tab situation
       - if opening a file which is already open in another tab, just switch to that tab
     - cmd + ',' to get to config file, and open in new tab by default
-    - file tree improvements
-      - hover should highlight (but not select!!) rows
-      - should remember its last width when it was open, and toggling should toggle to this width
-      - more file type icons
-    - better '.'
-      - probably want to move to a model where everything is always added to the '.' array except when we explicitly clear it.
+    - new window
+    - more file type icons
     - ui to indicate when a file is unsaved
       - should also do a popup when closing a tab (or the whole app) if unsaved stuff
     - show animation in the sidebar when opening a folder
+    - drag file onto editor or icon to open
 
   -- PERFORMANCE
     - fix kmp search incremental stuff

@@ -1,7 +1,6 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdlib.h>
-#include <printf.h>
 
 #include "util.h"
 

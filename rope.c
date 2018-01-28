@@ -555,7 +555,12 @@ editor_buffer_copy_last_undo(struct editor_buffer_t editor_buffer)
     edited_screen.lines = line_rope_shallow_copy(editor_buffer.current_screen->lines);
     edited_screen.text = rope_shallow_copy(editor_buffer.current_screen->text);
 
+//    int8_t save_to_undo = *editor_buffer.save_to_undo;
+//    *editor_buffer.save_to_undo = 1;
+
     undo_stack_append(editor_buffer, edited_screen);
+
+//    *editor_buffer.save_to_undo = save_to_undo;
 }
 
 void

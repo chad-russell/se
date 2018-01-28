@@ -1677,7 +1677,7 @@ kmp_search(struct editor_buffer_t editor_buffer, const char *W, int64_t start_ch
     int64_t len_W = (int64_t) strlen(W);
 
     // the table
-    int64_t T[len_W];
+    int64_t *T = se_alloc(len_W, sizeof(int64_t));
     kmp_prefix(W, T);
 
     while (m + i < len_S) {
@@ -1687,6 +1687,7 @@ kmp_search(struct editor_buffer_t editor_buffer, const char *W, int64_t start_ch
             i += 1;
             if (i == len_W) {
                 // occurrence found!
+                free(T);
                 return m;
             }
         } else if (T[i] > -1) {
@@ -1698,6 +1699,7 @@ kmp_search(struct editor_buffer_t editor_buffer, const char *W, int64_t start_ch
         }
     }
 
+    free(T);
     return -1;
 }
 
@@ -1755,6 +1757,7 @@ editor_buffer_search_forward(struct editor_buffer_t editor_buffer, const char *s
 {
     int64_t start_byte_offset = byte_for_char_at(editor_buffer.current_screen->text, start_char);
     int64_t byte_offset = kmp_search(editor_buffer, search, start_byte_offset);
+
     if (byte_offset == -1) {
         return -1;
     }
@@ -1986,7 +1989,6 @@ editor_buffer_set_cursor_point_to_end_of_current_word(struct editor_buffer_t edi
         if (current_char < max_char && str_contains(word_breaking_chars, *start_char)) {
             skipping_word_breaking_chars = 1;
         }
-
 
         int8_t found_start = 0;
         while (current_char < max_char) {
