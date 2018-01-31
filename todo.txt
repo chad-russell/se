@@ -34,7 +34,6 @@ TODO:
 
   -- LITTLER THINGS
     - switch to #RRGGBB and #AARRGGBB for colors in the preferences file
-    - shift + a is wrong
     - pasting over visually highlighted lines is wrong
       - need to put an extend to lines somewhere
     - enter should indent as much as the previous line (auto-indent hack)
