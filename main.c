@@ -20,8 +20,8 @@ main()
 //    editor_buffer_open_file(editor_buffer, 80, "/Users/chadrussell/Projects/Clion/se/todo.txt");
 //    int64_t found = editor_buffer_search_forward(editor_buffer, "macros", 0);
 
-    editor_buffer_open_file(editor_buffer, 80, "/Users/chadrussell/Desktop/macros.txt");
-    int64_t found = editor_buffer_search_forward(editor_buffer, "macros", 0);
+    editor_buffer_open_file(editor_buffer, 80, "/Users/chadrussell/Projects/text/menu.json");
+    int64_t found = editor_buffer_search_forward(editor_buffer, "yG", 0);
 
     buf_print_fmt("%i64\n", found);
     return 0;

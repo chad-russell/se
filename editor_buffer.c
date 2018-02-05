@@ -1674,10 +1674,10 @@ kmp_search(struct editor_buffer_t editor_buffer, const char *W, int64_t start_ch
     int64_t i = 0;
 
     int64_t len_S = rope_total_byte_length(editor_buffer.current_screen->text);
-    int64_t len_W = (int64_t) strlen(W);
+    size_t len_W = strlen(W);
 
     // the table
-    int64_t *T = se_alloc(len_W, sizeof(int64_t));
+    int64_t T[len_W + 1];
     kmp_prefix(W, T);
 
     while (m + i < len_S) {
@@ -1687,7 +1687,6 @@ kmp_search(struct editor_buffer_t editor_buffer, const char *W, int64_t start_ch
             i += 1;
             if (i == len_W) {
                 // occurrence found!
-                free(T);
                 return m;
             }
         } else if (T[i] > -1) {
@@ -1699,7 +1698,6 @@ kmp_search(struct editor_buffer_t editor_buffer, const char *W, int64_t start_ch
         }
     }
 
-    free(T);
     return -1;
 }
 
@@ -1709,20 +1707,22 @@ kmp_search_backward(struct editor_buffer_t editor_buffer, const char *W, int64_t
     // the beginning of the current match in S
     int64_t m = start_char;
 
-    int64_t len_W = (int64_t) strlen(W);
+    size_t len_W = strlen(W);
 
     // we need to reverse the string, since if you're searching backward character by character you are actually looking
-    // for the reverse string :/
-    char *WR = se_alloc(len_W, sizeof(char));
+    // for the reverse string. I could make a backward version of kmp_prefix and stuff, but I'm lazy :/
+    char WR[len_W + 1];
+
     for (int64_t i = 0; i < len_W; i++) {
         WR[i] = W[len_W - i - 1];
     }
+    WR[len_W] = '\0';
 
     // the position of the current character in W
     int64_t i = 0;
 
     // the table
-    int64_t T[len_W];
+    int64_t T[len_W + 1];
     kmp_prefix(WR, T);
 
     int64_t byte_at;
@@ -1734,7 +1734,7 @@ kmp_search_backward(struct editor_buffer_t editor_buffer, const char *W, int64_t
             i += 1;
             if (i == len_W) {
                 // occurrence found!
-                return m - len_W + 1;
+                return (int64_t) (m - len_W + 1);
             }
         } else {
             if (T[i] > -1) {
@@ -1746,8 +1746,6 @@ kmp_search_backward(struct editor_buffer_t editor_buffer, const char *W, int64_t
             }
         }
     }
-
-    free(WR);
 
     return -1;
 }
